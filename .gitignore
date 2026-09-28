@@ -13,6 +13,7 @@ crashlytics-build.properties
 # Keystores & secrets — NEVER commit
 *.jks
 *.keystore
+keystore.properties
 google-services.json
 paysync_secure_prefs.xml
 

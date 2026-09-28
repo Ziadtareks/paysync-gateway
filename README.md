@@ -164,6 +164,23 @@ cd paysync-gateway
 > **Windows CLI builds:** set `JAVA_HOME` to a JDK 17 (e.g. Android Studio's
 > bundled `~/.jdks/corretto-17`) — the project does not build on JDK 21+.
 
+### Release build
+
+The release variant is signed from `keystore.properties` (gitignored) +
+`paysync-release.keystore` at the repo root. Fresh clones without those files
+automatically fall back to the debug key, so CI and contributors never break.
+
+```bash
+./gradlew :app:assembleRelease
+# → app/build/outputs/apk/release/app-release.apk
+```
+
+Or from Android Studio: **Build → Select Build Variant → release**, then
+**Build → Build App Bundle(s) / APK(s) → Build APK(s)**.
+
+> Keep the keystore + its passwords backed up — updates must be signed with
+> the same key or Android will refuse to install them over an existing build.
+
 ## 📁 Project layout
 
 ```
