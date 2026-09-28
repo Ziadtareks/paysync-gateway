@@ -8,6 +8,7 @@ The app polls your backend for pending deposits, matches them against incoming
 wallet SMS (Vodafone Cash, InstaPay/NBE, BM, CIB, …), and dispatches
 `confirmed` / `timeout` results back — fully automatic, all amounts in **EGP**.
 
+[![CI](https://github.com/Ziadtareks/paysync-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/Ziadtareks/paysync-gateway/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%207.0%2B-3DDC84?logo=android&logoColor=white)
 ![Language](https://img.shields.io/badge/Kotlin-1.9-7F52FF?logo=kotlin&logoColor=white)
@@ -224,7 +225,3 @@ follow the terms of service of your wallet provider and local regulations.
 ## 📄 License
 
 [MIT](LICENSE) © 2026 PaySync Gateway contributors
-
-<!-- After your first push, uncomment and replace <you>:
-[![CI](https://github.com/<you>/paysync-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/<you>/paysync-gateway/actions/workflows/ci.yml)
--->
