@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.PaySyncGateway" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/md_green</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+    </style>
+</resources>

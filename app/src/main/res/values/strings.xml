@@ -1,0 +1,115 @@
+<resources>
+    <string name="app_name">PaySync Gateway</string>
+    <string name="desc_service_toggle">Gateway service toggle</string>
+    <string name="desc_provider_input">Provider sender ID input</string>
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_permissions">Permissions</string>
+
+    <!-- Dashboard -->
+    <string name="gateway_status">Gateway Status</string>
+    <string name="gateway_running">Gateway is Running</string>
+    <string name="gateway_stopped">Gateway is Stopped</string>
+    <string name="start_gateway">Start Gateway</string>
+    <string name="stop_gateway">Stop Gateway</string>
+    <string name="metric_pending">Pending Verifications</string>
+    <string name="metric_queue">Dispatch Queue</string>
+    <string name="metric_heartbeat">Last Heartbeat</string>
+    <string name="heartbeat_none">—</string>
+    <string name="live_log">Live Log</string>
+    <string name="empty_log">No dispatched transactions yet. Matches and timeouts will appear here.</string>
+    <string name="clear">Clear</string>
+    <string name="status_confirmed">Confirmed</string>
+    <string name="status_timeout">Timeout</string>
+    <string name="status_failed">Failed</string>
+    <string name="log_ref">ref %1$s</string>
+    <string name="log_verify">verify %1$s</string>
+    <string name="poll_now">Poll now</string>
+    <string name="polling">Polling…</string>
+
+    <!-- Dashboard sections -->
+    <string name="section_health">System Health</string>
+    <string name="section_control">Gateway Control</string>
+    <string name="section_metrics">Sync Metrics</string>
+    <string name="section_log">Live Log</string>
+    <string name="network_online">Online</string>
+    <string name="network_offline">Offline</string>
+    <string name="battery_label">Battery</string>
+    <string name="battery_charging">Charging</string>
+    <string name="metric_last_heartbeat">Last Heartbeat</string>
+    <string name="metric_last_poll">Last Poll</string>
+    <string name="dispatches_queueing">Dispatches queueing</string>
+
+    <!-- Settings -->
+    <string name="bot_backend">Bot Backend</string>
+    <string name="bot_url">Bot API URL</string>
+    <string name="bot_url_hint">https://api.mybot.com</string>
+    <string name="webhook_secret">Webhook Secret</string>
+    <string name="poll_interval">Poll interval (seconds, 5–300)</string>
+    <string name="save_config">Save configuration</string>
+    <string name="saving">Saving…</string>
+    <string name="saved">Saved ✓</string>
+    <string name="show_secret">Show secret</string>
+    <string name="hide_secret">Hide secret</string>
+    <string name="allowed_senders">Allowed Senders</string>
+    <string name="senders_hint">Exact match, case-insensitive. e.g. BM, CIB, OrangeCash</string>
+    <string name="new_sender">New sender ID</string>
+    <string name="add">Add</string>
+    <string name="add_provider">Add Provider</string>
+    <string name="remove_sender">Remove %1$s</string>
+
+    <!-- Permissions -->
+    <string name="perms_title">Permissions needed</string>
+    <string name="perms_subtitle">PaySync needs these to verify payments around the clock. Grant them once and you are done.</string>
+    <string name="perm_sms_title">SMS access</string>
+    <string name="perm_sms_desc">Reads incoming wallet SMS (Vodafone Cash, InstaPay, banks) to detect and verify deposits. Nothing else is read.</string>
+    <string name="perm_sms_btn">Grant SMS permissions</string>
+    <string name="perm_notif_title">Notifications</string>
+    <string name="perm_notif_desc">Shows the persistent gateway status and verification results. Required on Android 13+.</string>
+    <string name="perm_notif_btn">Allow notifications</string>
+    <string name="perm_battery_title">Run in background 24/7</string>
+    <string name="perm_battery_desc">Exempts PaySync from battery optimization so polling and SMS matching survive Doze mode.</string>
+    <string name="perm_battery_btn">Disable battery optimization</string>
+    <string name="perms_continue">Continue to dashboard</string>
+    <string name="perms_require_all">Grant all three permissions above to continue</string>
+    <string name="perms_granted">All set — gateway is ready</string>
+
+    <!-- Language -->
+    <string name="lang_title">Language</string>
+    <string name="lang_english">English</string>
+    <string name="lang_arabic">العربية</string>
+    <string name="lang_system">System default</string>
+    <string name="lang_cd">Switch language</string>
+
+    <!-- Feedback -->
+    <string name="msg_config_saved">Configuration saved</string>
+    <string name="msg_invalid_url">Invalid URL — use http(s)://…</string>
+    <string name="msg_provider_added">Provider added: %1$s</string>
+    <string name="msg_provider_removed">Removed: %1$s</string>
+    <string name="msg_enter_sender">Enter a sender ID first</string>
+    <string name="msg_polled">Backend polled</string>
+    <string name="msg_poll_failed">Poll failed: %1$s</string>
+    <string name="msg_battery_done">Battery optimization already disabled</string>
+    <string name="msg_notif_na">Not required below Android 13</string>
+
+    <!-- Foreground service notification -->
+    <string name="notif_title">PaySync Gateway running</string>
+    <string name="notif_starting">Starting…</string>
+    <string name="notif_format">%1$d pending • %2$d queued</string>
+    <string name="notif_stop">Stop</string>
+    <string name="channel_name">PaySync Gateway</string>
+    <string name="channel_desc">Keeps SMS verification and polling alive</string>
+
+    <!-- Permission screen (new names used by PermissionsScreen.kt) -->
+    <string name="perm_title">Permissions Needed</string>
+    <string name="perm_subtitle">PaySync needs these to verify payments around the clock. Grant them once and you\'re done.</string>
+    <string name="perm_sms_body">Reads incoming wallet SMS (Vodafone Cash, InstaPay, banks) to detect and verify deposits. Nothing else is read.</string>
+    <string name="perm_notif_body">Shows the persistent gateway status and verification results. Required on Android 13+.</string>
+    <string name="perm_battery_body">Exempts PaySync from battery optimization so polling and SMS matching survive Doze mode.</string>
+    <string name="perm_continue">Continue to Dashboard</string>
+    <string name="perm_all_required">Grant all three permissions above to continue</string>
+    <string name="perm_granted">Granted</string>
+    <string name="perm_grant">Grant Permission</string>
+</resources>

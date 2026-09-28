@@ -1,0 +1,114 @@
+<resources>
+    <string name="app_name">PaySync Gateway</string>
+    <string name="desc_service_toggle">مفتاح تشغيل البوابة</string>
+    <string name="desc_provider_input">إدخال معرّف المرسل</string>
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">لوحة التحكم</string>
+    <string name="nav_settings">الإعدادات</string>
+    <string name="nav_permissions">الأذونات</string>
+
+    <!-- Dashboard -->
+    <string name="gateway_status">حالة البوابة</string>
+    <string name="gateway_running">البوابة تعمل</string>
+    <string name="gateway_stopped">البوابة متوقفة</string>
+    <string name="start_gateway">تشغيل البوابة</string>
+    <string name="stop_gateway">إيقاف البوابة</string>
+    <string name="metric_pending">عمليات التحقق المعلقة</string>
+    <string name="metric_queue">طابور الإرسال</string>
+    <string name="metric_heartbeat">آخر نبضة</string>
+    <string name="heartbeat_none">—</string>
+    <string name="live_log">السجل المباشر</string>
+    <string name="empty_log">لا توجد معاملات مرسلة بعد. ستظهر المطابقات والمهلات هنا.</string>
+    <string name="clear">مسح</string>
+    <string name="status_confirmed">مؤكد</string>
+    <string name="status_timeout">مهلة</string>
+    <string name="status_failed">فشل</string>
+    <string name="log_ref">مرجع %1$s</string>
+    <string name="log_verify">تحقق %1$s</string>
+    <string name="poll_now">تحديث الآن</string>
+    <string name="polling">جارٍ التحديث…</string>
+
+    <!-- Dashboard sections -->
+    <string name="section_health">صحة النظام</string>
+    <string name="section_control">التحكم بالبوابة</string>
+    <string name="section_metrics">مقاييس المزامنة</string>
+    <string name="section_log">السجل المباشر</string>
+    <string name="network_online">متصل</string>
+    <string name="network_offline">غير متصل</string>
+    <string name="battery_label">البطارية</string>
+    <string name="battery_charging">قيد الشحن</string>
+    <string name="metric_last_heartbeat">آخر نبضة</string>
+    <string name="metric_last_poll">آخر تحديث</string>
+    <string name="dispatches_queueing">الإرسال في قائمة الانتظار</string>
+
+    <string name="bot_backend">البوت الخلفي</string>
+    <string name="bot_url">رابط API البوت</string>
+    <string name="bot_url_hint">https://api.mybot.com</string>
+    <string name="webhook_secret">مفتاح الأمان (Webhook Secret)</string>
+    <string name="poll_interval">فترة التحديث (بالثواني، 5–300)</string>
+    <string name="save_config">حفظ الإعدادات</string>
+    <string name="saving">جارٍ الحفظ…</string>
+    <string name="saved">تم الحفظ ✓</string>
+    <string name="show_secret">إظهار المفتاح</string>
+    <string name="hide_secret">إخفاء المفتاح</string>
+    <string name="allowed_senders">المراسلون المسموح بهم</string>
+    <string name="senders_hint">مطابقة تامة غير حساسة لحالة الأحرف. مثال: BM، CIB، OrangeCash</string>
+    <string name="new_sender">معرّف مرسل جديد</string>
+    <string name="add">إضافة</string>
+    <string name="add_provider">إضافة مزود</string>
+    <string name="remove_sender">إزالة %1$s</string>
+
+    <!-- Permissions -->
+    <string name="perms_title">الأذونات المطلوبة</string>
+    <string name="perms_subtitle">تحتاج PaySync هذه الأذونات للتحقق من المدفوعات على مدار الساعة. امنحها مرة واحدة فقط.</string>
+    <string name="perm_sms_title">الوصول إلى الرسائل</string>
+    <string name="perm_sms_desc">لقراءة رسائل المحافظ الواردة (فودافون كاش، إنستاباي، البنوك) لاكتشاف الودائع والتحقق منها. لا تُقرأ أي رسائل أخرى.</string>
+    <string name="perm_sms_btn">منح أذونات الرسائل</string>
+    <string name="perm_notif_title">الإشعارات</string>
+    <string name="perm_notif_desc">لعرض حالة البوابة الدائمة ونتائج التحقق. مطلوبة في أندرويد 13 فأحدث.</string>
+    <string name="perm_notif_btn">السماح بالإشعارات</string>
+    <string name="perm_battery_title">التشغيل في الخلفية 24/7</string>
+    <string name="perm_battery_desc">لاستثناء PaySync من تحسين البطارية حتى يستمر التحديث ومطابقة الرسائل في وضع Doze.</string>
+    <string name="perm_battery_btn">تعطيل تحسين البطارية</string>
+    <string name="perms_continue">المتابعة إلى لوحة التحكم</string>
+    <string name="perms_require_all">امنح الأذونات الثلاثة أعلاه للمتابعة</string>
+    <string name="perms_granted">تم — البوابة جاهزة</string>
+
+    <!-- Language -->
+    <string name="lang_title">اللغة</string>
+    <string name="lang_english">English</string>
+    <string name="lang_arabic">العربية</string>
+    <string name="lang_system">لغة النظام</string>
+    <string name="lang_cd">تغيير اللغة</string>
+
+    <!-- Feedback -->
+    <string name="msg_config_saved">تم حفظ الإعدادات</string>
+    <string name="msg_invalid_url">رابط غير صالح — استخدم http(s)://…</string>
+    <string name="msg_provider_added">تمت إضافة المزود: %1$s</string>
+    <string name="msg_provider_removed">تمت الإزالة: %1$s</string>
+    <string name="msg_enter_sender">أدخل معرّف المرسل أولاً</string>
+    <string name="msg_polled">تم تحديث البيانات</string>
+    <string name="msg_poll_failed">فشل التحديث: %1$s</string>
+    <string name="msg_battery_done">تحسين البطارية معطّل بالفعل</string>
+    <string name="msg_notif_na">غير مطلوب قبل أندرويد 13</string>
+
+    <!-- Foreground service notification -->
+    <string name="notif_title">بوابة PaySync تعمل</string>
+    <string name="notif_starting">جارٍ التشغيل…</string>
+    <string name="notif_format">‏%1$d معلقة • %2$d في الطابور</string>
+    <string name="notif_stop">إيقاف</string>
+    <string name="channel_name">بوابة PaySync</string>
+    <string name="channel_desc">لإبقاء التحقق من الرسائل والتحديث يعملان</string>
+
+    <!-- Permission screen (new names used by PermissionsScreen.kt) -->
+    <string name="perm_title">الأذونات المطلوبة</string>
+    <string name="perm_subtitle">تحتاج PaySync هذه الأذونات للتحقق من المدفوعات على مدار الساعة. امنحها مرة واحدة فقط.</string>
+    <string name="perm_sms_body">لقراءة رسائل المحافظ الواردة (فودافون كاش، إنستاباي، البنوك) لاكتشاف الودائع والتحقق منها. لا تُقرأ أي رسائل أخرى.</string>
+    <string name="perm_notif_body">لعرض حالة البوابة الدائمة ونتائج التحقق. مطلوبة في أندرويد 13 فأحدث.</string>
+    <string name="perm_battery_body">لاستثناء PaySync من تحسين البطارية حتى يستمر التحديث ومطابقة الرسائل في وضع Doze.</string>
+    <string name="perm_continue">المتابعة إلى لوحة التحكم</string>
+    <string name="perm_all_required">امنح الأذونات الثلاثة أعلاه للمتابعة</string>
+    <string name="perm_granted">تم المنح</string>
+    <string name="perm_grant">منح الإذن</string>
+</resources>

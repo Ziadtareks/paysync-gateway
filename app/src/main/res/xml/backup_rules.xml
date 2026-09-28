@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Exclude secrets from cloud backup; webhook secret stays on-device -->
+    <exclude domain="sharedpref" path="paysync_secure_prefs.xml" />
+</full-backup-content>

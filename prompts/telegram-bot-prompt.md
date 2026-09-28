@@ -1,0 +1,129 @@
+# Prompt — Telegram store bot backed by PaySync Gateway
+
+> **How to use:** copy everything below the line and paste it into
+> ChatGPT / Claude / Gemini / any coding AI. The generated project implements
+> the two endpoints the **PaySync Gateway** Android app talks to.
+> Swap the stack section if you prefer Python/Go/etc. — the API contract must
+> stay identical.
+
+---
+
+You are a senior backend engineer. Build a **complete, production-ready
+Telegram store bot** that sells digital top-ups (e.g. game credits) in Egypt
+and uses the **PaySync Gateway** Android app to verify wallet payments
+automatically. The customer pays in **EGP** to a mobile wallet (Vodafone Cash /
+InstaPay / NBE); the gateway app on the merchant's phone reads the wallet SMS
+and confirms the deposit by calling our HTTP API. Prices and balances are
+stored in EGP (store as a number with 2 decimals).
+
+## Stack (change only if you must)
+
+- Node.js 20+, TypeScript optional
+- [`grammY`](https://grammy.dev) for the Telegram bot
+- `express` for the HTTP API
+- `better-sqlite3` for storage (single file `store.db`)
+- Config via `.env`: `BOT_TOKEN`, `GATEWAY_SECRET`, `PORT` (default 8000),
+  `WALLET_NUMBER` (the wallet phone customers pay to)
+- Single project, runnable with `npm install && npm start`
+
+## Store flow (Telegram side)
+
+1. `/start` — registers the customer, shows the catalog and balance.
+2. Customer picks a product (inline keyboard) → bot asks for the amount or
+   uses the fixed price → creates a **pending deposit**:
+   - `verify_id`: fresh UUID
+   - `expected_amount`: the price
+   - `provider`: wallet label the customer chose, e.g. `VF-Cash` — **use the
+     exact same label as the SMS sender ID configured in the gateway app**
+   - `reference_id_hint`: `""` (unknown until the SMS arrives)
+   - `timeout_ms`: `120000`
+3. Bot replies: "Send **exactly {amount} EGP** to wallet `{WALLET_NUMBER}` via
+   `{provider}`. This order expires in 2 minutes." — shows a live countdown;
+   edits the message to ✅ **paid** or ⏰ **expired** when the gateway
+   dispatches the result (see below).
+4. On **confirmed** dispatch: credit the customer's balance (or deliver the
+   product), notify the customer, mark the deposit finalized.
+5. On **timeout** dispatch: expire the order, notify the customer.
+6. `/balance`, `/history` commands; admin command `/pending` lists live deposits.
+
+## HTTP API the gateway app calls (implement exactly)
+
+Authenticate **every** request with the header `X-Gateway-Secret` — compare
+against `GATEWAY_SECRET` with a constant-time compare; mismatch → `401`.
+
+### `GET /transactions/pending`
+
+- Returns `200` with a **bare JSON array** of pending (unfinalized,
+  unexpired) deposits; `[]` when idle. Do **not** wrap it in an object.
+- Each item:
+  ```json
+  {
+    "verify_id": "uuid",
+    "expected_amount": 150.0,
+    "provider": "VF-Cash",
+    "reference_id_hint": "",
+    "timeout_ms": 120000
+  }
+  ```
+- Keep this endpoint cheap — the app polls it every ~15 seconds.
+- Always respond within **25 seconds**.
+
+### `POST /transactions/dispatch`
+
+Headers: `X-Gateway-Secret`, `X-Gateway-Signature`,
+`Idempotency-Key`. Body (`application/json`):
+
+```json
+{ "verify_id": "…", "status": "confirmed",
+  "amount": 150.0, "provider": "VF-Cash", "reference_id": "023732288590" }
+```
+or
+```json
+{ "verify_id": "…", "status": "timeout" }
+```
+
+Server requirements, in order:
+
+1. Verify `X-Gateway-Secret` → `401` on mismatch.
+2. Recompute **HMAC-SHA256** over the **raw request body bytes** (UTF-8),
+   keyed with `GATEWAY_SECRET`, hex-lowercase, and compare to
+   `X-Gateway-Signature` → `401` on mismatch.
+3. Idempotency: if this `Idempotency-Key` was seen before, return the stored
+   response without executing again.
+4. If the `verify_id` is unknown → **`404`** (the app dead-letters on 404 and
+   stops retrying).
+5. If the deposit was already finalized, return `200 {"status":"success"}`
+   without crediting again — **never double-credit a `verify_id`**.
+6. `confirmed`: optional sanity check `|amount − expected_amount| ≤ 0.01`;
+   then credit/deliver, mark finalized, return `200 {"status":"success"}`.
+7. `timeout`: mark expired (release the order), return `200 {"status":"success"}`.
+8. Any other `4xx` you return (except `429`) makes the app drop the dispatch
+   permanently — return `404`/`200` deliberately, never accidental `400`s.
+9. Respond within **25 seconds**; the app retries `429`/`5xx`/network errors
+   with exponential backoff (your idempotency makes that safe).
+
+## Deliverables
+
+1. Full project: `package.json`, `.env.example`, `src/` (or a single
+   well-organized `index.js` — your call), SQLite schema.
+2. Seed the catalog with 3 demo products and a `/setwallet` admin command to
+   change `WALLET_NUMBER` at runtime.
+3. A `README` section (as a final code comment) with:
+   - run instructions,
+   - how to generate a strong `GATEWAY_SECRET`
+     (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`),
+   - how to expose it: deploy to Render/Railway/VPS, or for local testing
+     `npx cloudflared tunnel --url http://localhost:8000` / ngrok, and which
+     URL + secret to paste into the PaySync Gateway app Settings.
+4. Health endpoint `GET /health` returning `{"status":"ok"}`.
+
+## Acceptance checklist (self-verify before answering)
+
+- [ ] `GET /transactions/pending` returns a bare array, `[]` when idle.
+- [ ] Wrong/missing `X-Gateway-Secret` on any route → `401`.
+- [ ] HMAC verified over raw body; tampered body → `401`.
+- [ ] `Idempotency-Key` dedupe: same key twice → second call does nothing.
+- [ ] Unknown `verify_id` → `404`.
+- [ ] Never credits the same `verify_id` twice, even under retries.
+- [ ] All responses < 25 s; pending list is a bare array.
+- [ ] Secrets only from `.env`, never hardcoded.

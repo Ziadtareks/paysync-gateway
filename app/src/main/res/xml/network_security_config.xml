@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PaySync Gateway connects to USER-DEFINED webhook URLs. During local testing
+  these are typically cleartext LAN endpoints such as http://192.168.x.x:8000,
+  which Android 9+ blocks by default ("CLEARTEXT communication not permitted").
+  A base-config entry is required (rather than per-domain rules) because the
+  target host is only known at runtime from user settings.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

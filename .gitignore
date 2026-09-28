@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+app/build/
+local.properties
+*.iml
+
+# Android Studio
+.idea/
+*.hprof
+crashlytics-build.properties
+
+# Keystores & secrets — NEVER commit
+*.jks
+*.keystore
+google-services.json
+paysync_secure_prefs.xml
+
+# Backend secrets — NEVER commit
+backend/.env
+.env
+
+# OS
+.DS_Store
+Thumbs.db
