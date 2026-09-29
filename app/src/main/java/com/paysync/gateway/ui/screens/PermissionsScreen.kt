@@ -122,6 +122,20 @@ fun PermissionsScreen(
             onRequest = onRequestBattery
         )
 
+        // ── Restricted settings guide (Android 13+ sideloaded apps) ──
+        if (!smsGranted) {
+            InfoCard(
+                title = stringResource(R.string.restricted_card_title),
+                body = stringResource(R.string.restricted_card_body)
+            )
+        }
+
+        // ── OEM background-restriction guidance ──────────────────────
+        InfoCard(
+            title = stringResource(R.string.oem_card_title),
+            body = stringResource(R.string.oem_card_body)
+        )
+
         Spacer(Modifier.height(8.dp))
 
         // ── Continue Button ──────────────────────────────────────────
@@ -151,6 +165,39 @@ fun PermissionsScreen(
         }
 
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Info card — multi-step troubleshooting guidance (OEM / restricted settings)
+// ═══════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun InfoCard(title: String, body: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = PermCardShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

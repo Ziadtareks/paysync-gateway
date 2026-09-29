@@ -55,6 +55,16 @@ class SettingsManager private constructor(context: Context) {
         get() = prefs.getLong(KEY_LAST_POLL, 0L)
         set(value) { prefs.edit().putLong(KEY_LAST_POLL, value).apply() }
 
+    /** Start of the current continuous poll-failure streak (0 = healthy). */
+    var healthFirstFailureAt: Long
+        get() = prefs.getLong(KEY_HEALTH_FIRST_FAIL, 0L)
+        set(value) { prefs.edit().putLong(KEY_HEALTH_FIRST_FAIL, value).apply() }
+
+    /** Last time the "not verifying payments" alert was posted (rate limiting). */
+    var healthLastAlertAt: Long
+        get() = prefs.getLong(KEY_HEALTH_LAST_ALERT, 0L)
+        set(value) { prefs.edit().putLong(KEY_HEALTH_LAST_ALERT, value).apply() }
+
     var serviceEnabled: Boolean
         get() = prefs.getBoolean(KEY_SERVICE_ON, false)
         set(value) { prefs.edit().putBoolean(KEY_SERVICE_ON, value).apply() }
@@ -128,6 +138,8 @@ class SettingsManager private constructor(context: Context) {
         const val KEY_SERVICE_ON = "service_enabled"
         const val KEY_AMOUNT_FALLBACK = "amount_fallback_enabled"
         const val KEY_MAX_AMOUNT = "max_auto_confirm_amount_bits"
+        const val KEY_HEALTH_FIRST_FAIL = "health_first_failure_at"
+        const val KEY_HEALTH_LAST_ALERT = "health_last_alert_at"
 
         const val DEFAULT_BOT_URL = "https://api.mybot.com"
         const val DEFAULT_POLL_MS = 15_000L

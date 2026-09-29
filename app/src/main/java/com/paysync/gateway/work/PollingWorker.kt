@@ -21,16 +21,24 @@ import java.util.concurrent.TimeUnit
 class PollingWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val repo = (applicationContext as? PaySyncApp)?.container?.repo
+        val container = (applicationContext as? PaySyncApp)?.container
             ?: return Result.failure()
+        val repo = container.repo
         return try {
             repo.pollPending()
+            // The worker is CONNECTED-constrained, so reaching here with the
+            // backend configured means the poll went through on the network.
+            if (container.settings.isConfigured()) {
+                com.paysync.gateway.service.HealthNotifier.onPollSuccess(applicationContext)
+            }
             Result.success()
         } catch (e: IOException) {
             AppLog.w(TAG, "poll failed (io), retrying: ${e.message}")
+            com.paysync.gateway.service.HealthNotifier.onPollFailure(applicationContext)
             Result.retry()
         } catch (e: Exception) {
             AppLog.e(TAG, "poll failed", e)
+            com.paysync.gateway.service.HealthNotifier.onPollFailure(applicationContext)
             Result.failure()
         }
     }

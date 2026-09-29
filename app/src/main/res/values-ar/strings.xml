@@ -111,6 +111,20 @@
     <string name="channel_name">بوابة PaySync</string>
     <string name="channel_desc">لإبقاء التحقق من الرسائل والتحديث يعملان</string>
 
+    <!-- Health alert notification (4.3) -->
+    <string name="alert_channel_name">تنبيهات البوابة</string>
+    <string name="alert_channel_desc">ينبّه عندما تعجز البوابة عن التحقق من المدفوعات</string>
+    <string name="alert_title">البوابة لا تتحقق من المدفوعات</string>
+    <string name="alert_text">تعذّر الوصول إلى السيرفر الخلفي لمدة %1$d دقيقة. تحقق من اتصال الإنترنت ورابط الـ API والمفتاح السري. افتح التطبيق للتفاصيل.</string>
+
+    <!-- OEM background restrictions (4.4) -->
+    <string name="oem_card_title">قيود الخلفية من الشركة المصنّعة</string>
+    <string name="oem_card_body">كثير من الهواتفس تُغلق تطبيقات الخلفية بصمت. إذا توقفت البوابة بعد فترة، اسمح لها أيضًا من إعدادات الهاتف نفسها:\n\n• شاومي (MIUI): معلومات التطبيق → التشغيل التلقائي ON، البطارية → بلا قيود\n• سامسونج: الإعدادات → البطارية → حدود الاستخدام في الخلفية → تطبيقات «لا تنام أبدًا» → أضف PaySync\n• أوبو / ريالمي: معلومات التطبيق → اسمح بالتشغيل التلقائي، البطارية → اسمح بنشاط الخلفية\n• هواوي / هونر: الإعدادات → البطارية → تشغيل التطبيقات → PaySync → إدارة يدويًا → فعّل الخيارات الثلاثة</string>
+
+    <!-- Restricted settings guide (5.4): sideloaded apps on Android 13+ -->
+    <string name="restricted_card_title">لا يمكنك منح إذن الرسائل؟</string>
+    <string name="restricted_card_body">إذا رُفض إذن الرسائل مرتين، قد يضع أندرويد علامة «مقيّد» عليه. أصلح ذلك مرة واحدة:\n\n1. افتح إعدادات النظام → التطبيقات → PaySync Gateway.\n2. اضغط قائمة ⋮ (النقاط الثلاث) → «السماح بالإعدادات المقيّدة».\n3. ارجع وامنح الإذن.\n\nإذا ظهر تحذير من Play Protect عن تطبيق غير معروف، اختر «التثبيت على أي حال» — التطبيق مفتوح المصدر ولا يرسل البيانات إلا للسيرفر الذي تضبطه بنفسك.</string>
+
     <!-- Permission screen (new names used by PermissionsScreen.kt) -->
     <string name="perm_title">الأذونات المطلوبة</string>
     <string name="perm_subtitle">تحتاج PaySync هذه الأذونات للتحقق من المدفوعات على مدار الساعة. امنحها مرة واحدة فقط.</string>

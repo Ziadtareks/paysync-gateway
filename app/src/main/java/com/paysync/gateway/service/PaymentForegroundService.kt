@@ -57,16 +57,23 @@ class PaymentForegroundService : Service() {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             SettingsManager.get(this).serviceEnabled = false
+            HealthNotifier.cancelAlert(this) // deliberate stop is not an outage
             return START_NOT_STICKY
         }
         SettingsManager.get(this).serviceEnabled = true
 
         val notification = buildNotification(getString(R.string.notif_starting))
         try {
-            if (Build.VERSION.SDK_INT >= 29) {
-                startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-            } else {
-                startForeground(NOTIF_ID, notification)
+            when {
+                // specialUse (API 34+): no dataSync 6h/24h timeout, allowed
+                // from BOOT_COMPLETED on Android 15+ — required for a 24/7
+                // gateway. Must match the manifest foregroundServiceType.
+                Build.VERSION.SDK_INT >= 34 ->
+                    startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+                Build.VERSION.SDK_INT >= 29 ->
+                    startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                else ->
+                    startForeground(NOTIF_ID, notification)
             }
         } catch (e: Exception) {
             AppLog.e(TAG, "startForeground failed", e)
@@ -114,10 +121,19 @@ class PaymentForegroundService : Service() {
                         DispatchWorker.enqueueDrain(applicationContext)
                     }
                     val online = container.api.isOnline(applicationContext)
+                    // Health truth: a silent offline poll is still a failure to verify.
+                    if (online && container.settings.isConfigured()) {
+                        HealthNotifier.onPollSuccess(applicationContext)
+                    } else {
+                        HealthNotifier.onPollFailure(applicationContext)
+                    }
                     val prefix = if (online) "" else "Offline • "
                     updateNotification(prefix + getString(R.string.notif_format, pending, queued))
                 } catch (e: Exception) {
-                    if (isActive) AppLog.w(TAG, "poll tick failed: ${e.message}")
+                    if (isActive) {
+                        AppLog.w(TAG, "poll tick failed: ${e.message}")
+                        HealthNotifier.onPollFailure(applicationContext)
+                    }
                 }
                 delay(SettingsManager.get(applicationContext).pollingIntervalMs)
             }

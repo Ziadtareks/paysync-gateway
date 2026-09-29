@@ -112,6 +112,20 @@
     <string name="channel_name">PaySync Gateway</string>
     <string name="channel_desc">Keeps SMS verification and polling alive</string>
 
+    <!-- Health alert notification (4.3) -->
+    <string name="alert_channel_name">Gateway alerts</string>
+    <string name="alert_channel_desc">Warns when the gateway cannot verify payments</string>
+    <string name="alert_title">Gateway is not verifying payments</string>
+    <string name="alert_text">The gateway could not reach your backend for %1$d minutes. Check your internet connection, the Bot API URL and the secret. Open the app for details.</string>
+
+    <!-- OEM background restrictions (4.4) -->
+    <string name="oem_card_title">Manufacturer background restrictions</string>
+    <string name="oem_card_body">Many phones silently kill background apps. If the gateway stops after a while, also allow it in your phone\'s own settings:\n\n• Xiaomi (MIUI): App info → Autostart ON, Battery → No restrictions\n• Samsung: Settings → Battery → Background usage limits → Never sleeping apps → add PaySync\n• Oppo / Realme: App info → Allow Auto-start, Battery → Allow background activity\n• Huawei / Honor: Settings → Battery → App launch → PaySync → Manage manually → enable all three</string>
+
+    <!-- Restricted settings guide (5.4): sideloaded apps on Android 13+ -->
+    <string name="restricted_card_title">Can\'t grant SMS permission?</string>
+    <string name="restricted_card_body">If the SMS permission dialog was denied twice, Android may mark it as “restricted”. Fix it once:\n\n1. Open system Settings → Apps → PaySync Gateway.\n2. Tap the ⋮ (three-dot) menu → “Allow restricted settings”.\n3. Come back and grant the permission.\n\nIf Play Protect shows a warning about an unknown app, choose “Install anyway” — the app is open source and sends data only to the backend you configure.</string>
+
     <!-- Permission screen (new names used by PermissionsScreen.kt) -->
     <string name="perm_title">Permissions Needed</string>
     <string name="perm_subtitle">PaySync needs these to verify payments around the clock. Grant them once and you\'re done.</string>

@@ -9,10 +9,17 @@
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- dataSync is the runtime type on API 29-33; specialUse on API 34+. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- SMS receivers imply telephony hardware; not required (tablets with SMS-capable modems still work). -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
 
     <application
         android:name=".PaySyncApp"
@@ -38,11 +45,19 @@
             </intent-filter>
         </activity>
 
-        <!-- 24/7 gateway: SMS listening + 15s backend polling, Doze-resistant -->
+        <!-- 24/7 gateway: SMS listening + 15s backend polling, Doze-resistant.
+             dataSync (API 29-33 runtime type) has a 6h/24h time limit on
+             Android 15+ and cannot start from BOOT_COMPLETED when targeting
+             35+; specialUse (API 34+) has neither restriction, which is what
+             an always-on, boot-restarted gateway requires. -->
         <service
             android:name=".service.PaymentForegroundService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="dataSync|specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Always-on payment verification gateway: polls the user-configured backend every 15 s and matches incoming wallet SMS to pending deposits around the clock; no other foreground service type fits an unlimited-duration background bridge (dataSync is time-limited on Android 15+)." />
+        </service>
 
         <!-- SMS listener: highest priority so verification sees transactions first -->
         <receiver
