@@ -48,7 +48,7 @@ class SmsReceiverE2ETest {
 
     /** Production-shaped VF-Cash English SMS. */
     private val vfEnSms =
-        "You have received 150.00 EGP from 01012345678. Transaction ID: 023650505952. " +
+        "You have received 150.00 EGP from 01000000004. Transaction ID: 023650505952. " +
             "New balance: 561.92 EGP."
 
     /**

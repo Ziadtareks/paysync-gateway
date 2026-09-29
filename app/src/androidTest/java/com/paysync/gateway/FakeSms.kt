@@ -7,7 +7,7 @@ package com.paysync.gateway
  *
  * Supports:
  *  - alphanumeric senders ("VF-Cash", "BanK-AlAhly") via GSM-7 packed address
- *  - numeric senders ("01555656781") via semi-octet-swapped address
+ *  - numeric senders ("01000000001") via semi-octet-swapped address
  *  - GSM 7-bit bodies (ASCII-safe Latin text) and UCS-2 bodies (Arabic,
  *    Arabic-Indic digits)
  */

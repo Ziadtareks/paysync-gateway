@@ -8,12 +8,12 @@ class TransactionParserTest {
 
     /** REAL production VF-Cash SMS (integer amount, bare مبلغ). */
     private val vfRealSample =
-        "تم استلام مبلغ 150 جنيه من رقم 01555656781 المسجل بإسم Sohier M Rashwan " +
-            "على رقم محفظتك 01017216250. رصيدك الحالي: 561.92 جنيه تاريخ العملية: 16:32 26-09-15 رقم العملية: 023732288590..."
+        "تم استلام مبلغ 150 جنيه من رقم 01000000001 المسجل بإسم Test Sender " +
+            "على رقم محفظتك 01000000003. رصيدك الحالي: 561.92 جنيه تاريخ العملية: 16:32 26-09-15 رقم العملية: 023732288590..."
 
     private val vfSample =
-        "تم استلام مبلغ 150.00 جنيه من رقم 01115906129 المسجل بإسم Ahmed M Ahmed Sadek Azzam " +
-            "على رقم محفظتك 01017216250. رصيدك الحالي: 315.42 جنيه تاريخ العملية: 23:23 26-09-12 رقم العملية: 023650505952..."
+        "تم استلام مبلغ 150.00 جنيه من رقم 01000000002 المسجل بإسم Test Receiver Name " +
+            "على رقم محفظتك 01000000003. رصيدك الحالي: 315.42 جنيه تاريخ العملية: 23:23 26-09-12 رقم العملية: 023650505952..."
 
     private val nbeSample =
         "تم إضافة تحويل لحظي لبطاقتكم مسبقة الدفع بمبلغ 200.00 جم من MOHAMED YASSER ELSAYED رقم مرجعي 501087662186 يوم 09-09 الساعة 21:43..."
@@ -23,8 +23,8 @@ class TransactionParserTest {
         val p = TransactionParser.parse("VF-Cash", vfRealSample, 1726000000000L)!!
         assertEquals("vodafone_cash", p.type)
         assertEquals(150.0, p.amount, 0.0)
-        assertEquals("01555656781", p.senderPhone)
-        assertEquals("Sohier M Rashwan", p.senderName)
+        assertEquals("01000000001", p.senderPhone)
+        assertEquals("Test Sender", p.senderName)
         assertEquals("023732288590", p.referenceId)
         assertEquals("VF-Cash", p.provider)
         assertEquals("EGP", p.currency)
@@ -36,8 +36,8 @@ class TransactionParserTest {
         val p = TransactionParser.parse("VF-Cash", vfSample, 1726000000000L)!!
         assertEquals("vodafone_cash", p.type)
         assertEquals(150.00, p.amount, 0.0)
-        assertEquals("01115906129", p.senderPhone)
-        assertEquals("Ahmed M Ahmed Sadek Azzam", p.senderName)
+        assertEquals("01000000002", p.senderPhone)
+        assertEquals("Test Receiver Name", p.senderName)
         assertEquals("023650505952", p.referenceId)
     }
 
@@ -153,11 +153,11 @@ class TransactionParserTest {
     @Test
     fun arabicIndicDigits_normalizeBeforeParsing() {
         assertEquals("150.00", TransactionParser.normalizeDigits("١٥٠.٠٠"))
-        val body = "تم استلام بمبلغ ١٥٠.٠٠ جنيه من رقم ٠١١١٥٩٠٦١٢٩ المسجل بإسم Test Name على رقم محفظتك رقم العملية: ١٢٣٤٥٦"
+        val body = "تم استلام بمبلغ ١٥٠.٠٠ جنيه من رقم ٠١٠٠٠٠٠٠٠٠٢ المسجل بإسم Test Name على رقم محفظتك رقم العملية: ١٢٣٤٥٦"
         val p = TransactionParser.parse("VF-Cash", body)!!
         assertEquals("vodafone_cash", p.type)
         assertEquals(150.0, p.amount, 0.0)
-        assertEquals("01115906129", p.senderPhone)
+        assertEquals("01000000002", p.senderPhone)
         assertEquals("123456", p.referenceId)
     }
 

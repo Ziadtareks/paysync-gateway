@@ -14,9 +14,9 @@ package com.paysync.gateway.data
 object TransactionParser {
 
     // ---------- A. Vodafone Cash (BILINGUAL AR/EN) ----------
-    // AR sample: "تم استلام مبلغ 150 جنيه من رقم 01555656781 المسجل بإسم
-    //   Sohier M Rashwan على رقم محفظتك 01017216250. ... رقم العملية: 023732288590..."
-    // EN sample: "You have received 150.00 EGP from 01012345678. Transaction ID: 023732288590. New balance: 561.92 EGP."
+    // AR sample: "تم استلام مبلغ 150 جنيه من رقم 01000000001 المسجل بإسم
+    //   Test Sender على رقم محفظتك 01000000003. ... رقم العملية: 023732288590..."
+    // EN sample: "You have received 150.00 EGP from 01000000004. Transaction ID: 023732288590. New balance: 561.92 EGP."
     private val VF_AMOUNT = Regex(
         """(?:بـ?\s*)?(?:مبلغ|Amount|received)\s*([\d.,]+)\s*(?:جنيه|ج\.م|جم|EGP)""",
         RegexOption.IGNORE_CASE
