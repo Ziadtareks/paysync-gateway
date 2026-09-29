@@ -8,6 +8,29 @@
 
 ---
 
+## ⚠️ تحذير أمني — اقرأ قبل ما تستخدم ده بفلوس حقيقية
+
+السيرفر اللي بيتبني بالذكاء الاصطناعي هو **بداية مش نظام إنتاج**. قبل ما يلمس
+فلوس حقيقية **لازم** حد مختص يراجعه أمنيًا. راجع على الأقل: التحقق من الـ
+secret والـ HMAC بثوابت زمنية، منع التكرار عبر `Idempotency-Key`، مراجع
+معاملات فريدة، تحديد المعدل (rate limiting)، HTTPS فقط، الأسرار في متغيرات
+بيئة، وعدم الوثوق بالمبالغ اللي العميل/التطبيق يبعتها. القائمة الكاملة في
+[`../BACKEND_API_CONTRACT.md`](../BACKEND_API_CONTRACT.md) وضمن كل برومبت.
+
+---
+
+## ⚠️ Security warning — read before using this with real money
+
+An AI-generated backend is a **starting point, not a production system**.
+Before it ever touches real money, a competent human MUST security-review it.
+At minimum verify: constant-time secret + HMAC checks, `Idempotency-Key`
+dedupe, unique transaction references, rate limiting, HTTPS only, secrets in
+env vars, and never trusting client-supplied amounts. The full checklist is
+in [`../BACKEND_API_CONTRACT.md`](../BACKEND_API_CONTRACT.md) and inside
+every prompt file.
+
+---
+
 ## بالعربي — إيه المجلد ده؟
 
 تطبيق **PaySync Gateway** محتاج **سيرفر صغير (backend)** فيه نقطتين (endpoints)

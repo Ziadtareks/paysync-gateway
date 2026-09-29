@@ -12,10 +12,10 @@ wallet SMS (Vodafone Cash, InstaPay/NBE, BM, CIB, …), and dispatches
 [![Releases](https://img.shields.io/badge/All_releases-here-1F2937?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Ziadtareks/paysync-gateway/releases)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/Ziadtareks/paysync-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/Ziadtareks/paysync-gateway/actions/workflows/ci.yml)
 ![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?logo=android&logoColor=white)
 ![Language](https://img.shields.io/badge/Kotlin-1.9-7F52FF?logo=kotlin&logoColor=white)
 ![UI](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=android&logoColor=white)
-![Tests](https://img.shields.io/badge/unit%20tests-18%20passing-brightgreen)
 
 Sideloaded open-source build (MIT) — **not** distributed via Google Play.
 
@@ -35,7 +35,14 @@ Sideloaded open-source build (MIT) — **not** distributed via Google Play.
    (always points to the newest release).
 2. On the phone, open the file and allow installing from **unknown sources**
    when prompted (required for any app outside the Play Store).
+   - **Play Protect** may warn about unknown apps — choose **Install anyway**
+     (the app is open source and reports only to the backend you configure).
 3. Grant the SMS + notification permissions on first launch.
+   - **Can't grant SMS?** On Android 13+ a twice-denied permission can become
+     "restricted": open system **Settings → Apps → PaySync Gateway**, tap the
+     **⋮ menu → Allow restricted settings**, then grant it again.
+4. Review the [Privacy Policy](PRIVACY.md) — what the app reads, where it
+   sends data, and how to delete everything.
 
 **Verify the signature** (optional, apksigner from Android build-tools):
 
@@ -75,7 +82,8 @@ flowchart LR
 | 🔄 **Always-on** | Foreground service (`dataSync`) polls every 15 s; WorkManager backup poller every 15 min; auto-restart on boot |
 | 🌍 **Bilingual** | Full EN/AR UI, automatic RTL, in-app language switcher + Android 13+ system picker |
 | 🧾 **Smart SMS parsing** | Vodafone Cash / InstaPay-NBE exact regexes + tolerant fallbacks + generic parser for any bank |
-| 🎯 **Two-tier matching** | Exact reference match, then provider + amount tolerance (±0.01 EGP), race-safe behind a mutex |
+| 🎯 **Two-tier matching** | Exact reference match, then provider + amount tolerance (±0.01 EGP) — **only when exactly one deposit matches**; duplicates of a reference or amount are logged as ambiguous and never auto-confirmed. Race-safe behind a mutex |
+| 🛟 **Safety caps** | Turn amount-fallback matching off (reference-only), and set a max auto-confirm amount — above it, payments are logged for manual review. Optional update check via GitHub (see [PRIVACY.md](PRIVACY.md)) |
 | 📬 **Reliable outbox** | Dispatches persisted in Room; retry `2s → 64s` (max 6); 4xx dead-letters; Idempotency-Key on every POST |
 | 🔐 **Secrets stay secret** | URL/secret/senders in `EncryptedSharedPreferences`, excluded from cloud backups, HMAC-signed dispatches |
 | 📊 **Live dashboard** | Pulsing status card, network + battery truth, pending/queue metrics, live dispatch log |
@@ -118,17 +126,39 @@ Full walkthrough (including how to enter the URL + secret in the app):
 5. Allow the **battery-optimization exemption** when asked.
 
 > Testing locally? Run the backend on your PC and enter
-> `http://<your-pc-ip>:8000` — cleartext HTTP is allowed for local
-> development. Use HTTPS in production.
+> `http://<your-pc-ip>:8000` — **cleartext HTTP only works in debug builds**
+> (`./gradlew :app:assembleDebug`); release builds reject plain HTTP and
+> accept HTTPS URLs only. Use HTTPS in production.
 
 ## 🔐 Security
 
 - Settings (URL, secret, senders) live in **EncryptedSharedPreferences** and
-  are excluded from cloud backups and device transfers.
+  are excluded from cloud backups, device transfers, and backup (the Room DB
+  with SMS texts is excluded too).
 - Every dispatch is **HMAC-SHA256-signed over the raw body**; the secret never
   leaves the device except as the auth header, and an **Idempotency-Key** makes
-  server-side retries safe.
+  server-side retries safe. Release builds reject cleartext HTTP; only debug
+  builds allow local plaintext testing.
+- **Honest limitation:** an SMS sender ID is **not cryptographic proof**.
+  Sender IDs can be spoofed in some networks, and a leaked/stolen SIM is
+  indistinguishable from the real one. PaySync reduces this risk (exact
+  sender allow-list, unambiguous matching only, per-deposit references) but
+  cannot eliminate it. We recommend:
+  1. setting a **max auto-confirm amount** (Settings → Matching Safety), and
+  2. periodically reconciling auto-confirmed payments against your wallet's
+     official statement (Vodafone Cash / bank app) — treat PaySync as an
+     automation layer, not as an auditor.
 - `.gitignore` blocks keystores and `.env` files; no secrets are committed.
+
+## 🔋 Keeping it alive 24/7
+
+The gateway restarts after reboot and alerts you with a high-priority
+notification if it cannot reach your backend for 5+ minutes. Phones from
+**Xiaomi, Samsung, Oppo/Realme and Huawei/Honor** additionally kill
+background apps silently — allow PaySync in the manufacturer's own settings
+(App info → Autostart / No battery restrictions / Never-sleeping apps, per
+the in-app guide on the Permissions screen). The battery-optimization
+exemption prompt stays mandatory.
 
 ## 🛠️ Build from source
 
@@ -138,9 +168,12 @@ Android 8.0+ device (SMS receivers are unreliable on emulators).
 ```bash
 git clone https://github.com/Ziadtareks/paysync-gateway.git
 cd paysync-gateway
-./gradlew :app:testDebugUnitTest   # 18 tests — parser, matcher, HMAC
+./gradlew :app:testDebugUnitTest   # 39 unit tests — parser, matcher, HMAC
 ./gradlew :app:assembleDebug       # debug APK
 ```
+
+CI runs the unit tests, lint, debug + release (R8) builds on every push/PR,
+and the instrumented test suite on API 34/35 emulators.
 
 > **Windows CLI:** set `JAVA_HOME` to a JDK 17 — the project does not build on
 > JDK 21+.
