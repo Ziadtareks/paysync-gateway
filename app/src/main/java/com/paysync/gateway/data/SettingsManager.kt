@@ -129,6 +129,17 @@ class SettingsManager private constructor(context: Context) {
         return current
     }
 
+    /**
+     * Replaces the whole allowed-sender set in ONE write. Successive
+     * per-item writes are less reliable with EncryptedSharedPreferences
+     * StringSet caching, so bulk changes (and tests) should prefer this.
+     */
+    fun setSenders(senders: Collection<String>): Set<String> {
+        val clean = senders.map { it.trim() }.filter { it.isNotEmpty() }
+        prefs.edit().putStringSet(KEY_SENDERS, HashSet(clean)).apply()
+        return HashSet(clean)
+    }
+
     fun removeSender(name: String): Set<String> {
         val current = getSenders()
         current.remove(name)

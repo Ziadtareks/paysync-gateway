@@ -32,6 +32,8 @@ class SmsReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
+        // goAsync() is only non-null for real system broadcasts; the null case
+        // exists for direct invocation in instrumented tests.
         val pendingResult = goAsync()
         Scope.launch {
             try {
@@ -39,7 +41,7 @@ class SmsReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 AppLog.e(TAG, "onReceive failed", e)
             } finally {
-                pendingResult.finish()
+                pendingResult?.finish()
             }
         }
     }

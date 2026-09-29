@@ -75,6 +75,13 @@ android {
         // AppLog gates data-bearing logs on BuildConfig.DEBUG.
         buildConfig = true
     }
+    kapt {
+        arguments {
+            // Exported Room schema JSONs are committed under app/schemas and
+            // validated by the instrumented schema-integrity test.
+            arg("room.schemaLocation", "$projectDir/schemas")
+        }
+    }
     composeOptions {
         // Kotlin 1.9.24 pairs with Compose Compiler 1.5.14
         kotlinCompilerExtensionVersion = "1.5.14"
@@ -83,6 +90,11 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+    sourceSets {
+        // Room schema JSONs must be visible to MigrationTestHelper in
+        // instrumented tests (read from the androidTest APK assets).
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
     }
 }
 
@@ -134,4 +146,10 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    // Phase-6 device-like verification: fake backend, schema integrity,
+    // worker outbox behavior, coroutine-driven receiver concurrency.
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
+    androidTestImplementation("androidx.work:work-testing:2.9.0")
 }

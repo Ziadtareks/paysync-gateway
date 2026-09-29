@@ -68,8 +68,8 @@ class UpdateChecker {
          * never "newer" (fail silent).
          */
         fun isNewer(latest: String, current: String = BuildConfig.VERSION_NAME): Boolean {
-            val l = latest.substringBefore('-').split('.').map { it.toLongOrNull() }
-            val c = current.substringBefore('-').split('.').map { it.toLongOrNull() }
+            val l = latest.removePrefix("v").removePrefix("V").substringBefore('-').split('.').map { it.toLongOrNull() }
+            val c = current.removePrefix("v").removePrefix("V").substringBefore('-').split('.').map { it.toLongOrNull() }
             if (l.any { it == null } || c.any { it == null }) return false
             val ln = l.map { it!! }
             val cn = c.map { it!! }
