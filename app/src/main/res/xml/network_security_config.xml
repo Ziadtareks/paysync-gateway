@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  PaySync Gateway connects to USER-DEFINED webhook URLs. During local testing
-  these are typically cleartext LAN endpoints such as http://192.168.x.x:8000,
-  which Android 9+ blocks by default ("CLEARTEXT communication not permitted").
-  A base-config entry is required (rather than per-domain rules) because the
-  target host is only known at runtime from user settings.
+  RELEASE (and every non-debug build) network security policy.
+
+  PaySync Gateway sends the webhook secret + HMAC-signed dispatches to the
+  user-configured backend. Cleartext HTTP would leak both, so it is disabled
+  here. Local plaintext-HTTP testing (http://192.168.x.x:8000) is only
+  possible in DEBUG builds, which override this file via
+  app/src/debug/res/xml/network_security_config.xml.
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

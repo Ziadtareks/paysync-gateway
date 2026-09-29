@@ -318,6 +318,12 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             emit(R.string.msg_invalid_url)
             return
         }
+        // Release builds never talk cleartext: the network security config
+        // blocks http:// anyway, so refuse it up front with a clear message.
+        if (!com.paysync.gateway.BuildConfig.DEBUG && url.startsWith("http://")) {
+            emit(R.string.msg_https_required)
+            return
+        }
         // Max auto-confirm amount: empty disables, otherwise must parse > 0.
         val maxText = maxAutoAmount.value.trim()
         val maxEgp = when {

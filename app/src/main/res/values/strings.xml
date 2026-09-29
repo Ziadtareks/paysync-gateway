@@ -68,6 +68,7 @@
     <string name="max_amount_hint">e.g. 2000</string>
     <string name="max_amount_desc">Leave empty to disable. Payments above this amount are never auto-confirmed — they are logged as “needs manual review” and expire normally.</string>
     <string name="msg_invalid_amount">Enter a valid amount in EGP or leave the field empty</string>
+    <string name="msg_https_required">Release builds only accept HTTPS URLs. For local HTTP testing, install a debug build.</string>
 
     <!-- Permissions -->
     <string name="perms_title">Permissions needed</string>

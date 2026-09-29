@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEBUG-build override: cleartext HTTP is allowed so a locally running
+  backend (http://<pc-ip>:8000) can be tested on a real phone. RELEASE
+  builds reject cleartext — see app/src/main/res/xml/network_security_config.xml.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

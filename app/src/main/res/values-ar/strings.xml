@@ -67,6 +67,7 @@
     <string name="max_amount_hint">مثال: 2000</string>
     <string name="max_amount_desc">اتركه فارغًا للتعطيل. المدفوعات الأعلى من هذا المبلغ لن تُؤكد تلقائيًا — تُسجَّل كـ«بحاجة إلى مراجعة يدوية» وتنتهي مهلتها بشكل طبيعي.</string>
     <string name="msg_invalid_amount">أدخل مبلغًا صحيحًا بالجنيه أو اترك الحقل فارغًا</string>
+    <string name="msg_https_required">إصدارات الإصدار (Release) تقبل روابط HTTPS فقط. للتجربة المحلية عبر HTTP استخدم إصدار Debug.</string>
 
     <!-- Permissions -->
     <string name="perms_title">الأذونات المطلوبة</string>

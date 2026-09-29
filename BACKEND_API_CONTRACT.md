@@ -29,6 +29,30 @@ When a secret is configured, the app attaches it to **every** request:
 If no secret is configured in the app, these headers are absent — in
 production always require the secret.
 
+## Replay protection (server-side responsibility)
+
+The app does **not** send a timestamp header and the signature covers **only
+the raw body** — by design. Changing that (e.g. adding `X-Gateway-Timestamp`
+inside the signed material) would break every backend that already verifies
+`X-Gateway-Signature` over the body alone, so the wire format stays as
+documented above.
+
+Replay resistance therefore comes from the **`Idempotency-Key`**: it is a UUID
+minted once per dispatch at match time and never reused. Servers MUST enforce
+its uniqueness:
+
+- Store every `Idempotency-Key` you have processed (a 7-day retention is more
+  than enough — the app retries for at most ~2 minutes).
+- A retried POST with a seen key must return the original result **without
+  executing again** (this also makes the app's exponential-backoff retries
+  safe).
+- Optionally also reject `verify_id` values that were already finalized
+  (credited or timed out) — the app never re-sends a finalized dispatch.
+
+Because the same body+secret always produces the same signature, a captured
+request is replayable within the constraints above; enforcing `Idempotency-Key`
+uniqueness (and finalizing `verify_id` at most once) closes it.
+
 ## Endpoint 1 — List pending deposits
 
 ```http
@@ -150,6 +174,11 @@ You only need the 2 endpoints above, but this explains what the fields do:
      `reference_id_hint` (when you supply one).
    - **Priority 2:** `provider` matches **and** the amounts agree within
      **±0.01 EGP**.
+   - **Ambiguity guard:** if two or more live deposits share the same
+     reference, or the amount fallback matches two or more live deposits,
+     the app confirms **nothing** and logs the SMS as ambiguous for manual
+     review. Always send a `reference_id_hint` when your flow knows the
+     transaction reference — it is the only unambiguous key.
 4. On match the app POSTs `confirmed` (with the `Idempotency-Key` minted at
    match time). If the per-request `timeout_ms` (or the 120 s app default)
    elapses with no match, the app POSTs `timeout`.
