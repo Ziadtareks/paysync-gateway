@@ -1,7 +1,7 @@
 package com.paysync.gateway.work
 
 import android.content.Context
-import android.util.Log
+import com.paysync.gateway.util.AppLog
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -68,7 +68,7 @@ class DispatchWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     }
                     !result.retryable -> {
                         // 4xx dead-letter: drop, never retry.
-                        Log.w(TAG, "dead-letter ${item.verifyId}: ${result.error}")
+                        AppLog.w(TAG, "dead-letter ${item.verifyId}: ${result.error}")
                         db.dispatchQueueDao().deleteById(item.id)
                         container.repo.logDispatch(
                             payload.verifyId, "${payload.status} (failed)", result.error ?: "HTTP error"
@@ -79,7 +79,7 @@ class DispatchWorker(context: Context, params: WorkerParameters) : CoroutineWork
                         attempt++
                         db.dispatchQueueDao().bumpAttempt(item.id, result.error)
                         if (attempt >= MAX_ATTEMPTS) {
-                            Log.w(TAG, "exhausted ${item.verifyId}, dead-lettering")
+                            AppLog.w(TAG, "exhausted ${item.verifyId}, dead-lettering")
                             db.dispatchQueueDao().deleteById(item.id)
                             container.repo.logDispatch(
                                 payload.verifyId, "${payload.status} (failed)", result.error ?: "Retries exhausted"

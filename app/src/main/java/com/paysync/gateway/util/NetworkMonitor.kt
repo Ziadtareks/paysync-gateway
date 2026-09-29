@@ -5,7 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.util.Log
+import com.paysync.gateway.util.AppLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -94,7 +94,7 @@ class NetworkMonitor(appContext: Context) {
                     .build()
                 cm?.registerNetworkCallback(request, callback)
             } catch (e: Exception) {
-                Log.w(TAG, "registerNetworkCallback fallback failed", e)
+                AppLog.w(TAG, "registerNetworkCallback fallback failed", e)
             }
         }
     }

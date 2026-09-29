@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
-import android.util.Log
+import com.paysync.gateway.util.AppLog
 import com.paysync.gateway.PaySyncApp
 import com.paysync.gateway.data.SettingsManager
 import com.paysync.gateway.data.TransactionParser
@@ -37,7 +37,7 @@ class SmsReceiver : BroadcastReceiver() {
             try {
                 handleSms(context.applicationContext, intent)
             } catch (e: Exception) {
-                Log.e(TAG, "onReceive failed", e)
+                AppLog.e(TAG, "onReceive failed", e)
             } finally {
                 pendingResult.finish()
             }
@@ -46,7 +46,7 @@ class SmsReceiver : BroadcastReceiver() {
 
     private suspend fun handleSms(appContext: Context, intent: Intent) {
         val container = (appContext as? PaySyncApp)?.container ?: run {
-            Log.w(TAG, "PaySyncApp container missing; SMS dropped")
+            AppLog.w(TAG, "PaySyncApp container missing; SMS dropped")
             return
         }
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
@@ -58,7 +58,7 @@ class SmsReceiver : BroadcastReceiver() {
         // Group PDUs by originating address (multi-part SMS reassembly).
         for ((origin, parts) in messages.groupBy { it.originatingAddress ?: "" }) {
             if (!TransactionParser.matchesAllowedSender(origin, allowed)) {
-                Log.d(TAG, "Ignoring SMS from: $origin")
+                AppLog.d(TAG, "Ignoring SMS from: $origin")
                 continue
             }
             val provider = TransactionParser.resolveMatchedProvider(origin, allowed)
@@ -72,7 +72,7 @@ class SmsReceiver : BroadcastReceiver() {
             val claimed = container.db.processedSmsDao()
                 .insertIfAbsent(ProcessedSms(hash = hash))
             if (claimed == -1L) {
-                Log.d(TAG, "Duplicate SMS dropped (hash=${hash.take(8)}…)")
+                AppLog.d(TAG, "Duplicate SMS dropped (hash=${hash.take(8)}…)")
                 continue
             }
             runCatching {
@@ -83,14 +83,14 @@ class SmsReceiver : BroadcastReceiver() {
             val parsed = try {
                 TransactionParser.parse(provider, fullBody, timestamp)
             } catch (e: Exception) {
-                Log.e(TAG, "Parse failed for $provider", e)
+                AppLog.e(TAG, "Parse failed for $provider", e)
                 null
             }
             if (parsed == null) {
-                Log.w(TAG, "Unparseable SMS from $provider (len=${fullBody.length})")
+                AppLog.w(TAG, "Unparseable SMS from $provider (len=${fullBody.length})")
                 continue
             }
-            Log.i(TAG, "Parsed ${parsed.type} ${parsed.amount} ref=${parsed.referenceId}")
+            AppLog.i(TAG, "Parsed ${parsed.type} ${parsed.amount} ref=${parsed.referenceId}")
             container.repo.onSmsParsed(provider, parsed)
         }
     }

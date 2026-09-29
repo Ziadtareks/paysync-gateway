@@ -59,6 +59,15 @@
     <string name="add_provider">إضافة مزود</string>
     <string name="remove_sender">إزالة %1$s</string>
 
+    <!-- Matching safety (Settings) -->
+    <string name="safety_card_title">أمان المطابقة</string>
+    <string name="amount_fallback_label">المطابقة بالمبلغ كبديل</string>
+    <string name="amount_fallback_hint">تأكيد الودائع بالمزود والمبلغ (±0.01 جنيه) عندما لا يتطابق أي رقم مرجعي. أطفئه للتأكيد فقط عند تطابق رقم المرجع تمامًا.</string>
+    <string name="max_amount_label">أقصى مبلغ تأكيد تلقائي (جنيه)</string>
+    <string name="max_amount_hint">مثال: 2000</string>
+    <string name="max_amount_desc">اتركه فارغًا للتعطيل. المدفوعات الأعلى من هذا المبلغ لن تُؤكد تلقائيًا — تُسجَّل كـ«بحاجة إلى مراجعة يدوية» وتنتهي مهلتها بشكل طبيعي.</string>
+    <string name="msg_invalid_amount">أدخل مبلغًا صحيحًا بالجنيه أو اترك الحقل فارغًا</string>
+
     <!-- Permissions -->
     <string name="perms_title">الأذونات المطلوبة</string>
     <string name="perms_subtitle">تحتاج PaySync هذه الأذونات للتحقق من المدفوعات على مدار الساعة. امنحها مرة واحدة فقط.</string>

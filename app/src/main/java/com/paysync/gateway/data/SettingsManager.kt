@@ -59,6 +59,25 @@ class SettingsManager private constructor(context: Context) {
         get() = prefs.getBoolean(KEY_SERVICE_ON, false)
         set(value) { prefs.edit().putBoolean(KEY_SERVICE_ON, value).apply() }
 
+    /**
+     * When true (the historical default), a deposit with no reference hint can
+     * be confirmed by provider + amount (±0.01 EGP). When false, only an exact
+     * transaction-reference match confirms — safer at the cost of misses for
+     * backends that never send reference_id_hint.
+     */
+    var amountFallbackEnabled: Boolean
+        get() = prefs.getBoolean(KEY_AMOUNT_FALLBACK, true)
+        set(value) { prefs.edit().putBoolean(KEY_AMOUNT_FALLBACK, value).apply() }
+
+    /**
+     * Auto-confirm cap in EGP. 0.0 = disabled (historical default). When set
+     * (> 0) and the matched amount exceeds it, the dispatch is NOT sent;
+     * the deposit is logged for manual review and follows its normal timeout.
+     */
+    var maxAutoConfirmAmountEgp: Double
+        get() = Double.fromBits(prefs.getLong(KEY_MAX_AMOUNT, 0L))
+        set(value) { prefs.edit().putLong(KEY_MAX_AMOUNT, if (value > 0.0) value.toRawBits() else 0L).apply() }
+
     fun touchHeartbeat() {
         lastHeartbeat = System.currentTimeMillis()
     }
@@ -107,6 +126,8 @@ class SettingsManager private constructor(context: Context) {
         const val KEY_HEARTBEAT = "last_heartbeat"
         const val KEY_LAST_POLL = "last_poll_ms"
         const val KEY_SERVICE_ON = "service_enabled"
+        const val KEY_AMOUNT_FALLBACK = "amount_fallback_enabled"
+        const val KEY_MAX_AMOUNT = "max_auto_confirm_amount_bits"
 
         const val DEFAULT_BOT_URL = "https://api.mybot.com"
         const val DEFAULT_POLL_MS = 15_000L

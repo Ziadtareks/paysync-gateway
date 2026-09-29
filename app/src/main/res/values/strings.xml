@@ -60,6 +60,15 @@
     <string name="add_provider">Add Provider</string>
     <string name="remove_sender">Remove %1$s</string>
 
+    <!-- Matching safety (Settings) -->
+    <string name="safety_card_title">Matching Safety</string>
+    <string name="amount_fallback_label">Amount fallback matching</string>
+    <string name="amount_fallback_hint">Confirm deposits by provider + amount (±0.01 EGP) when no transaction reference matches. Turn OFF to confirm only on an exact reference.</string>
+    <string name="max_amount_label">Max auto-confirm amount (EGP)</string>
+    <string name="max_amount_hint">e.g. 2000</string>
+    <string name="max_amount_desc">Leave empty to disable. Payments above this amount are never auto-confirmed — they are logged as “needs manual review” and expire normally.</string>
+    <string name="msg_invalid_amount">Enter a valid amount in EGP or leave the field empty</string>
+
     <!-- Permissions -->
     <string name="perms_title">Permissions needed</string>
     <string name="perms_subtitle">PaySync needs these to verify payments around the clock. Grant them once and you are done.</string>

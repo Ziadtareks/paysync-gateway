@@ -67,6 +67,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // AppLog gates data-bearing logs on BuildConfig.DEBUG.
+        buildConfig = true
     }
     composeOptions {
         // Kotlin 1.9.24 pairs with Compose Compiler 1.5.14
@@ -120,6 +122,9 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    // Test-only fake backend: proves the HMAC covers the exact raw bytes sent
+    // (same version as the production OkHttp client).
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

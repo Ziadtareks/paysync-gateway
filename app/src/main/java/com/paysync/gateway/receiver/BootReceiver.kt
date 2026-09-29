@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
+import com.paysync.gateway.util.AppLog
 import androidx.core.content.ContextCompat
 import com.paysync.gateway.data.SettingsManager
 import com.paysync.gateway.service.PaymentForegroundService
@@ -34,7 +34,7 @@ class BootReceiver : BroadcastReceiver() {
             SettingsManager.get(context.applicationContext).serviceEnabled
         }.getOrDefault(false)
         if (!enabled) {
-            Log.i(TAG, "Boot: service was disabled, not restarting")
+            AppLog.i(TAG, "Boot: service was disabled, not restarting")
             return
         }
         try {
@@ -45,13 +45,13 @@ class BootReceiver : BroadcastReceiver() {
             } else {
                 context.applicationContext.startService(svc)
             }
-            Log.i(TAG, "Boot: gateway restarted")
+            AppLog.i(TAG, "Boot: gateway restarted")
         } catch (e: Exception) {
             if (e.javaClass.name == "android.app.ForegroundServiceStartNotAllowedException") {
-                Log.w(TAG, "Boot: FGS start denied in background; WorkManager fallback engaged")
+                AppLog.w(TAG, "Boot: FGS start denied in background; WorkManager fallback engaged")
                 runCatching { PollingWorker.schedule(context.applicationContext) }
             } else {
-                Log.e(TAG, "Boot restart failed", e)
+                AppLog.e(TAG, "Boot restart failed", e)
             }
         }
     }

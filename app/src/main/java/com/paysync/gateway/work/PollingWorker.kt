@@ -1,7 +1,7 @@
 package com.paysync.gateway.work
 
 import android.content.Context
-import android.util.Log
+import com.paysync.gateway.util.AppLog
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -27,10 +27,10 @@ class PollingWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             repo.pollPending()
             Result.success()
         } catch (e: IOException) {
-            Log.w(TAG, "poll failed (io), retrying: ${e.message}")
+            AppLog.w(TAG, "poll failed (io), retrying: ${e.message}")
             Result.retry()
         } catch (e: Exception) {
-            Log.e(TAG, "poll failed", e)
+            AppLog.e(TAG, "poll failed", e)
             Result.failure()
         }
     }

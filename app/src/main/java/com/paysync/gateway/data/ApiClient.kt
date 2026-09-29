@@ -132,13 +132,17 @@ class ApiClient(private val settings: SettingsManager) {
     }
 
     /**
-     * Signs every POST with HMAC-SHA256 of the raw body and always identifies
-     * the gateway via X-Gateway-Secret.
+     * Signs every POST with HMAC-SHA256 of the raw body bytes exactly as they
+     * are written to the wire, and always identifies the gateway via
+     * X-Gateway-Secret. The secret is read lazily per request via
+     * [secretProvider] (testable without Android).
      */
-    class HmacInterceptor(private val settings: SettingsManager) : Interceptor {
+    class HmacInterceptor(private val secretProvider: () -> String) : Interceptor {
+        constructor(settings: SettingsManager) : this({ settings.webhookSecret })
+
         override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
             val original = chain.request()
-            val secret = settings.webhookSecret
+            val secret = secretProvider()
             val builder = original.newBuilder()
             if (secret.isNotBlank()) {
                 builder.header("X-Gateway-Secret", secret)

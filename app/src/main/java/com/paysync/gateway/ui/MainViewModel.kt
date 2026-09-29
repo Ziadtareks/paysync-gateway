@@ -132,6 +132,12 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val heartbeatMs = MutableStateFlow(settings.lastHeartbeat)
     val lastPollMs = MutableStateFlow(settings.lastPollMs)
 
+    // ── Matching safety settings ──────────────────────────────────────
+    /** Amount-fallback toggle (default ON = historical behavior). */
+    val amountFallback = MutableStateFlow(settings.amountFallbackEnabled)
+    /** Max auto-confirm amount as text; empty = disabled. */
+    val maxAutoAmount = MutableStateFlow(formatAmountInput(settings.maxAutoConfirmAmountEgp))
+
     // ─── Battery ──────────────────────────────────────────────────────
 
     private val _batteryPct = MutableStateFlow(readBatteryPct())
@@ -293,6 +299,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         serviceOn.value = settings.serviceEnabled
         heartbeatMs.value = settings.lastHeartbeat
         lastPollMs.value = settings.lastPollMs
+        amountFallback.value = settings.amountFallbackEnabled
+        maxAutoAmount.value = formatAmountInput(settings.maxAutoConfirmAmountEgp)
         refreshBattery()
         appLang.value = LocaleHelper.currentTag()
     }
@@ -310,6 +318,16 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             emit(R.string.msg_invalid_url)
             return
         }
+        // Max auto-confirm amount: empty disables, otherwise must parse > 0.
+        val maxText = maxAutoAmount.value.trim()
+        val maxEgp = when {
+            maxText.isEmpty() -> 0.0
+            else -> maxText.toDoubleOrNull()?.takeIf { it > 0.0 }
+        }
+        if (maxText.isNotEmpty() && maxEgp == null) {
+            emit(R.string.msg_invalid_amount)
+            return
+        }
         isSaving.value = true
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
@@ -318,6 +336,8 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                 pollSeconds.value.toLongOrNull()?.let { secs ->
                     if (secs in 5..300) settings.pollingIntervalMs = secs * 1000L
                 }
+                settings.amountFallbackEnabled = amountFallback.value
+                settings.maxAutoConfirmAmountEgp = maxEgp ?: 0.0
                 runCatching { repo.pollPending() }
             }
             isSaving.value = false
@@ -384,6 +404,12 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     companion object {
         private const val FALLBACK_POLL_SECONDS = 15L
+
+        /** "0" / "0.0" render as empty (disabled); anything else keeps user-friendly text. */
+        fun formatAmountInput(egp: Double): String =
+            if (egp > 0.0) {
+                if (egp % 1.0 == 0.0) egp.toLong().toString() else egp.toString()
+            } else ""
     }
 }
 

@@ -14,7 +14,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
+import com.paysync.gateway.util.AppLog
 import androidx.core.app.NotificationCompat
 import com.paysync.gateway.PaySyncApp
 import com.paysync.gateway.R
@@ -69,13 +69,13 @@ class PaymentForegroundService : Service() {
                 startForeground(NOTIF_ID, notification)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "startForeground failed", e)
+            AppLog.e(TAG, "startForeground failed", e)
         }
         startPollLoop()
         // Flush any backlog from downtime/reboot, then keep the periodic net.
         runCatching { DispatchWorker.enqueueDrain(applicationContext) }
         runCatching { DispatchWorker.schedulePeriodicDrain(applicationContext) }
-        Log.i(TAG, "Gateway service started")
+        AppLog.i(TAG, "Gateway service started")
         return START_STICKY
     }
 
@@ -100,7 +100,7 @@ class PaymentForegroundService : Service() {
         pollJob = scope.launch {
             val container = (applicationContext as? PaySyncApp)?.container
             if (container == null) {
-                Log.w(TAG, "DI container missing; poll loop aborted")
+                AppLog.w(TAG, "DI container missing; poll loop aborted")
                 return@launch
             }
             while (isActive) {
@@ -117,7 +117,7 @@ class PaymentForegroundService : Service() {
                     val prefix = if (online) "" else "Offline • "
                     updateNotification(prefix + getString(R.string.notif_format, pending, queued))
                 } catch (e: Exception) {
-                    if (isActive) Log.w(TAG, "poll tick failed: ${e.message}")
+                    if (isActive) AppLog.w(TAG, "poll tick failed: ${e.message}")
                 }
                 delay(SettingsManager.get(applicationContext).pollingIntervalMs)
             }
@@ -182,7 +182,7 @@ class PaymentForegroundService : Service() {
             networkCallback = cb
             connectivityManager?.registerNetworkCallback(request, cb)
         } catch (e: Exception) {
-            Log.w(TAG, "NetworkCallback registration failed", e)
+            AppLog.w(TAG, "NetworkCallback registration failed", e)
         }
     }
 

@@ -1,7 +1,7 @@
 package com.paysync.gateway.data
 
 import android.content.Context
-import android.util.Log
+import com.paysync.gateway.util.AppLog
 import com.google.gson.Gson
 import com.paysync.gateway.data.DispatchLog
 import com.paysync.gateway.data.db.AppDatabase
@@ -66,32 +66,76 @@ class GatewayRepository(
         db.capturedSmsDao().prune()
 
         // Only one transaction is matched and dispatched at a time.
-        val match: PendingVerify? = VerifyMatcher.withMatchLock {
+        val match: MatchOutcome = VerifyMatcher.withMatchLock {
             val live = db.pendingVerifyDao().liveOnce()
-            val hit = VerifyMatcher.findMatch(parsed, live)
-            if (hit == null) return@withMatchLock null
-            val payload = DispatchPayload(
-                verifyId = hit.verifyId,
-                status = "confirmed",
-                amount = parsed.amount,
-                provider = provider,
-                referenceId = parsed.referenceId
+            val hit = VerifyMatcher.findMatch(
+                parsed, live,
+                allowAmountFallback = settings.amountFallbackEnabled
             )
-            enqueueDispatch(payload)
-            // Claim instantly: any twin SMS waiting on the Mutex now sees
-            // PENDING-only liveOnce() without this row.
-            db.pendingVerifyDao().markMatched(hit.verifyId)
-            db.pendingVerifyDao().deleteById(hit.verifyId)
-            hit
+            when (hit) {
+                is VerifyMatcher.MatchResult.Match -> {
+                    // Safety cap: over-limit matches are never auto-confirmed —
+                    // they stay pending and follow their timeout for review.
+                    val cap = settings.maxAutoConfirmAmountEgp
+                    if (cap > 0.0 && parsed.amount > cap) {
+                        MatchOutcome.OverCap(hit.verify)
+                    } else {
+                        val payload = DispatchPayload(
+                            verifyId = hit.verify.verifyId,
+                            status = "confirmed",
+                            amount = parsed.amount,
+                            provider = provider,
+                            referenceId = parsed.referenceId
+                        )
+                        enqueueDispatch(payload)
+                        // Claim instantly: any twin SMS waiting on the Mutex
+                        // now sees PENDING-only liveOnce() without this row.
+                        db.pendingVerifyDao().markMatched(hit.verify.verifyId)
+                        db.pendingVerifyDao().deleteById(hit.verify.verifyId)
+                        MatchOutcome.Confirmed(hit.verify)
+                    }
+                }
+                is VerifyMatcher.MatchResult.Ambiguous ->
+                    MatchOutcome.Ambiguous(hit.reason, hit.candidates)
+                VerifyMatcher.MatchResult.NoMatch -> MatchOutcome.NoMatch
+            }
         }
-        if (match == null) {
-            Log.d(TAG, "No pending verify matches ${parsed.type} ${parsed.amount}")
-            return
+        when (match) {
+            is MatchOutcome.Confirmed -> {
+                db.capturedSmsDao().markMatched(smsId, match.verify.verifyId)
+                settings.touchHeartbeat()
+                AppLog.i(TAG, "Matched ${match.verify.verifyId} via ${parsed.referenceId ?: parsed.amount}")
+                DispatchWorker.enqueueDrain(appContext)
+            }
+            is MatchOutcome.OverCap -> {
+                // Needs manual review: logged, deposit stays pending and will
+                // follow its normal timeout (no confirmed dispatch sent).
+                logDispatch(
+                    match.verify.verifyId, "review",
+                    "Amount above auto-confirm cap: ${"%.2f".format(parsed.amount)} EGP • " +
+                        "${parsed.provider} • ref ${parsed.referenceId ?: "—"}"
+                )
+                AppLog.w(TAG, "Verify ${match.verify.verifyId} above auto-confirm cap — manual review")
+            }
+            is MatchOutcome.Ambiguous -> {
+                logDispatch(
+                    "—", "ambiguous",
+                    "${match.candidates} deposits match ${parsed.provider} " +
+                        "${"%.2f".format(parsed.amount)} EGP — not confirmed"
+                )
+                AppLog.w(TAG, "Ambiguous match (${match.reason}, ${match.candidates} candidates) — not confirmed")
+            }
+            MatchOutcome.NoMatch ->
+                AppLog.d(TAG, "No pending verify matches ${parsed.type} ${parsed.amount}")
         }
-        db.capturedSmsDao().markMatched(smsId, match.verifyId)
-        settings.touchHeartbeat()
-        Log.i(TAG, "Matched ${match.verifyId} via ${parsed.referenceId ?: parsed.amount}")
-        DispatchWorker.enqueueDrain(appContext)
+    }
+
+    /** What [onSmsParsed] decided for one SMS, resolved inside the match lock. */
+    private sealed interface MatchOutcome {
+        data class Confirmed(val verify: PendingVerify) : MatchOutcome
+        data class OverCap(val verify: PendingVerify) : MatchOutcome
+        data class Ambiguous(val reason: String, val candidates: Int) : MatchOutcome
+        object NoMatch : MatchOutcome
     }
 
     // ---------- Poll side ----------
@@ -120,7 +164,7 @@ class GatewayRepository(
             }
             settings.touchHeartbeat()
         } catch (e: Exception) {
-            Log.w(TAG, "pollPending fetch failed: ${e.message}")
+            AppLog.w(TAG, "pollPending fetch failed: ${e.message}")
             throw e // let PollingWorker decide retry vs failure
         } finally {
             sweepExpired()
@@ -138,7 +182,7 @@ class GatewayRepository(
                 if (db.dispatchQueueDao().countForVerify(p.verifyId) == 0) {
                     enqueueDispatch(DispatchPayload(verifyId = p.verifyId, status = "timeout"))
                 }
-                Log.i(TAG, "Verify ${p.verifyId} timed out")
+                AppLog.i(TAG, "Verify ${p.verifyId} timed out")
             }
             DispatchWorker.enqueueDrain(appContext)
         }

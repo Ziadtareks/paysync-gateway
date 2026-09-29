@@ -97,6 +97,59 @@ class TransactionParserTest {
         assertEquals("VF-Cash", TransactionParser.resolveMatchedProvider("VF-CASH", allowed))
     }
 
+    // ── 2.1 Sender trust: near-miss hardening ────────────────────────────
+
+    @Test
+    fun sender_trailingWhitespace_stillMatchesExactly() {
+        val allowed = setOf("VF-Cash")
+        assertTrue(TransactionParser.matchesAllowedSender("VF-Cash ", allowed))
+        assertTrue(TransactionParser.matchesAllowedSender(" VF-Cash", allowed))
+    }
+
+    @Test
+    fun sender_caseDifference_matches() {
+        val allowed = setOf("VF-Cash")
+        assertTrue(TransactionParser.matchesAllowedSender("vF-cAsH", allowed))
+    }
+
+    @Test
+    fun sender_prefixSuffixVariants_neverMatch() {
+        val allowed = setOf("VF-Cash", "BanK-AlAhly")
+        // Suffix / prefix / containment variants of allowed senders must be dropped.
+        assertFalse(TransactionParser.matchesAllowedSender("VF-Cash2", allowed))
+        assertFalse(TransactionParser.matchesAllowedSender("2VF-Cash", allowed))
+        assertFalse(TransactionParser.matchesAllowedSender("VF-CashX", allowed))
+        assertFalse(TransactionParser.matchesAllowedSender("XVF-Cash", allowed))
+        assertFalse(TransactionParser.matchesAllowedSender("VF-Cash-Promo", allowed))
+        assertFalse(TransactionParser.matchesAllowedSender("MyVF-Cash", allowed))
+        assertFalse(TransactionParser.matchesAllowedSender("BanK-AlAhlyBank", allowed))
+        assertFalse(TransactionParser.matchesAllowedSender("AlAhly", allowed))
+        assertFalse(TransactionParser.matchesAllowedSender("Bank", allowed))
+    }
+
+    @Test
+    fun sender_numericSenders_neverMatch() {
+        val allowed = setOf("VF-Cash")
+        assertFalse(TransactionParser.matchesAllowedSender("123456", allowed))
+        assertFalse(TransactionParser.matchesAllowedSender("+201234567890", allowed))
+        assertFalse(TransactionParser.matchesAllowedSender("01", allowed))
+    }
+
+    @Test
+    fun sender_emptyAllowedList_orBlankSender_drops() {
+        assertFalse(TransactionParser.matchesAllowedSender("VF-Cash", emptySet()))
+        assertFalse(TransactionParser.matchesAllowedSender("", setOf("VF-Cash")))
+        assertFalse(TransactionParser.matchesAllowedSender("   ", setOf("VF-Cash")))
+    }
+
+    @Test
+    fun sender_resolvedProvider_isTheExactAllowedEntry() {
+        val allowed = setOf("VF-Cash")
+        // Case-insensitive hit resolves to the canonical allow-list label.
+        assertEquals("VF-Cash", TransactionParser.resolveMatchedProvider("  vF-CaSh  ", allowed))
+        assertEquals("unknown", TransactionParser.resolveMatchedProvider(null, allowed))
+    }
+
     @Test
     fun arabicIndicDigits_normalizeBeforeParsing() {
         assertEquals("150.00", TransactionParser.normalizeDigits("١٥٠.٠٠"))

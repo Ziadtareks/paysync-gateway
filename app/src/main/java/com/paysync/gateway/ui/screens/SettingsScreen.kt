@@ -40,6 +40,7 @@ import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -72,6 +73,8 @@ fun SettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
     val newProvider by vm.newProvider.collectAsStateWithLifecycle()
     val isSaving by vm.isSaving.collectAsStateWithLifecycle()
     val saveConfirmed by vm.saveConfirmed.collectAsStateWithLifecycle()
+    val amountFallback by vm.amountFallback.collectAsStateWithLifecycle()
+    val maxAutoAmount by vm.maxAutoAmount.collectAsStateWithLifecycle()
     var secretVisible by remember { mutableStateOf(false) }
 
     Column(
@@ -235,7 +238,72 @@ fun SettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
             }
         }
 
-        // ── Card 2: Allowed Senders ──────────────────────────────────
+        // ── Card 2: Matching Safety ──────────────────────────────────
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = SettingsCardShape,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    stringResource(R.string.safety_card_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            stringResource(R.string.amount_fallback_label),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            stringResource(R.string.amount_fallback_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(
+                        checked = amountFallback,
+                        onCheckedChange = { vm.amountFallback.value = it }
+                    )
+                }
+
+                OutlinedTextField(
+                    value = maxAutoAmount,
+                    onValueChange = { vm.maxAutoAmount.value = it.filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text(stringResource(R.string.max_amount_label)) },
+                    placeholder = { Text(stringResource(R.string.max_amount_hint)) },
+                    shape = FieldShape,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    stringResource(R.string.max_amount_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // ── Card 3: Allowed Senders ──────────────────────────────────
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = SettingsCardShape,
