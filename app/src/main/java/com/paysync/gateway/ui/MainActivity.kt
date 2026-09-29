@@ -123,6 +123,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         pushPermissionStates()
+        // Opt-out update check (throttled to once per 24h inside the VM).
+        vm.maybeCheckForUpdate()
     }
 
     /**

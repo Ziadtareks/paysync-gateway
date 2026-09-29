@@ -69,6 +69,13 @@
     <string name="msg_invalid_amount">أدخل مبلغًا صحيحًا بالجنيه أو اترك الحقل فارغًا</string>
     <string name="msg_https_required">إصدارات الإصدار (Release) تقبل روابط HTTPS فقط. للتجربة المحلية عبر HTTP استخدم إصدار Debug.</string>
 
+    <!-- Update checker (5.6, opt-out) -->
+    <string name="update_check_label">فحص التحديثات (GitHub)</string>
+    <string name="update_check_hint">مرة واحدة على الأكثر يوميًا: طلب HTTPS مجهول إلى api.github.com. لا ينزّل أو يثبّت أي شيء أبدًا. التفاصيل في PRIVACY.md.</string>
+    <string name="update_card_title">يتوفر تحديث: v%1$s</string>
+    <string name="update_card_body">يوجد إصدار أحدث من PaySync Gateway على GitHub. لا يتم التثبيت تلقائيًا أبدًا — راجع التحديث وثبّته يدويًا.</string>
+    <string name="update_card_button">فتح صفحة الإصدارات</string>
+
     <!-- Permissions -->
     <string name="perms_title">الأذونات المطلوبة</string>
     <string name="perms_subtitle">تحتاج PaySync هذه الأذونات للتحقق من المدفوعات على مدار الساعة. امنحها مرة واحدة فقط.</string>

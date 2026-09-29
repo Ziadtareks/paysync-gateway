@@ -75,6 +75,7 @@ fun SettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
     val saveConfirmed by vm.saveConfirmed.collectAsStateWithLifecycle()
     val amountFallback by vm.amountFallback.collectAsStateWithLifecycle()
     val maxAutoAmount by vm.maxAutoAmount.collectAsStateWithLifecycle()
+    val updateCheckEnabled by vm.updateCheckEnabled.collectAsStateWithLifecycle()
     var secretVisible by remember { mutableStateOf(false) }
 
     Column(
@@ -300,6 +301,29 @@ fun SettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            stringResource(R.string.update_check_label),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            stringResource(R.string.update_check_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(
+                        checked = updateCheckEnabled,
+                        onCheckedChange = { vm.setUpdateCheckEnabled(it) }
+                    )
+                }
             }
         }
 

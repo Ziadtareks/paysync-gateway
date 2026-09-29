@@ -103,6 +103,8 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val ui by vm.uiState.collectAsStateWithLifecycle()
+    val updateAvailable by vm.updateAvailable.collectAsStateWithLifecycle()
+    val ctx = androidx.compose.ui.platform.LocalContext.current
 
     val timeFmt = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
     val dateFmt = remember { SimpleDateFormat("dd MMM, HH:mm:ss", Locale.getDefault()) }
@@ -112,6 +114,54 @@ fun DashboardScreen(
         contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+
+        // ── Section 0 : Update notice (never auto-installs; link only) ──
+        updateAvailable?.let { update ->
+            item(key = "update-notice") {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MetricCardShape,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.update_card_title, update.latestVersion),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            stringResource(R.string.update_card_body),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        TextButton(onClick = {
+                            runCatching {
+                                ctx.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(update.releasesUrl)
+                                    )
+                                )
+                            }
+                        }) {
+                            Text(
+                                stringResource(R.string.update_card_button),
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
         // ── Section 1 : System Health ────────────────────────────────
         item(key = "section-health") {

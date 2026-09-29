@@ -138,6 +138,36 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     /** Max auto-confirm amount as text; empty = disabled. */
     val maxAutoAmount = MutableStateFlow(formatAmountInput(settings.maxAutoConfirmAmountEgp))
 
+    // ── Update checker (opt-out; see PRIVACY.md) ──────────────────────
+
+    val updateAvailable = MutableStateFlow<com.paysync.gateway.data.UpdateChecker.UpdateInfo?>(null)
+    val updateCheckEnabled = MutableStateFlow(settings.updateCheckEnabled)
+
+    fun setUpdateCheckEnabled(enabled: Boolean) {
+        updateCheckEnabled.value = enabled
+        settings.updateCheckEnabled = enabled
+        if (!enabled) updateAvailable.value = null
+    }
+
+    /**
+     * At most one anonymous GitHub releases lookup per 24 h. Silent on
+     * offline / rate-limit errors; never downloads anything.
+     */
+    fun maybeCheckForUpdate() {
+        if (!updateCheckEnabled.value) return
+        val now = System.currentTimeMillis()
+        if (now - settings.lastUpdateCheckAt < 24L * 60 * 60 * 1000) return
+        settings.lastUpdateCheckAt = now
+        viewModelScope.launch(Dispatchers.IO) {
+            val info = runCatching {
+                com.paysync.gateway.data.UpdateChecker().checkLatestRelease()
+            }.getOrNull() ?: return@launch
+            if (com.paysync.gateway.data.UpdateChecker.isNewer(info.latestVersion)) {
+                updateAvailable.value = info
+            }
+        }
+    }
+
     // ─── Battery ──────────────────────────────────────────────────────
 
     private val _batteryPct = MutableStateFlow(readBatteryPct())

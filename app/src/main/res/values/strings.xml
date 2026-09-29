@@ -70,6 +70,13 @@
     <string name="msg_invalid_amount">Enter a valid amount in EGP or leave the field empty</string>
     <string name="msg_https_required">Release builds only accept HTTPS URLs. For local HTTP testing, install a debug build.</string>
 
+    <!-- Update checker (5.6, opt-out) -->
+    <string name="update_check_label">Check for updates (GitHub)</string>
+    <string name="update_check_hint">At most once a day, an anonymous HTTPS request to api.github.com. Never downloads or installs anything. Details in PRIVACY.md.</string>
+    <string name="update_card_title">Update available: v%1$s</string>
+    <string name="update_card_body">A newer version of PaySync Gateway is published on GitHub. Updates are never installed automatically — review and install manually.</string>
+    <string name="update_card_button">Open releases page</string>
+
     <!-- Permissions -->
     <string name="perms_title">Permissions needed</string>
     <string name="perms_subtitle">PaySync needs these to verify payments around the clock. Grant them once and you are done.</string>
