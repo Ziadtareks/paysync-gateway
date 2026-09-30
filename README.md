@@ -51,6 +51,12 @@ apksigner verify --print-certs PaySync-Gateway.apk
 # SHA-256: b28b28630e30714332f0857bd8d13380e5af7294bfb2cde6475ef64fa52c8748
 ```
 
+**Verify the file checksum** (sha256 of the APK itself, v1.1.0):
+
+```bash
+echo "1b7027b78096211b0a56dfc60963af6957ceffb540ab7c691b94adbf19584ec9  PaySync-Gateway.apk" | sha256sum -c -
+```
+
 ## ✨ What is it?
 
 Selling digital goods or running a Telegram store in Egypt usually means one
@@ -168,7 +174,7 @@ Android 8.0+ device (SMS receivers are unreliable on emulators).
 ```bash
 git clone https://github.com/Ziadtareks/paysync-gateway.git
 cd paysync-gateway
-./gradlew :app:testDebugUnitTest   # 39 unit tests — parser, matcher, HMAC
+./gradlew :app:testDebugUnitTest   # 42 unit tests — parser, matcher, HMAC, update checker
 ./gradlew :app:assembleDebug       # debug APK
 ```
 
