@@ -41,7 +41,11 @@ Sideloaded open-source build (MIT) — **not** distributed via Google Play.
    - **Can't grant SMS?** On Android 13+ a twice-denied permission can become
      "restricted": open system **Settings → Apps → PaySync Gateway**, tap the
      **⋮ menu → Allow restricted settings**, then grant it again.
-4. Review the [Privacy Policy](PRIVACY.md) — what the app reads, where it
+4. **After updating an existing install, open the app and toggle the gateway
+   OFF then ON (or reboot the phone).** Android stops the 24/7 service during
+   an app update — the toggle may still show "Running" until you do this.
+   (Automatic resume ships in v1.1.1.)
+5. Review the [Privacy Policy](PRIVACY.md) — what the app reads, where it
    sends data, and how to delete everything.
 
 **Verify the signature** (optional, apksigner from Android build-tools):
