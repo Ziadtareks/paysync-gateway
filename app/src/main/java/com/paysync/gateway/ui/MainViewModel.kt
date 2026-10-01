@@ -36,7 +36,10 @@ sealed interface UiEvent {
 // ─── UI State ─────────────────────────────────────────────────────────
 
 data class UiState(
+    /** Persisted toggle (the user's intent that the gateway run). */
     val isRunning: Boolean = false,
+    /** Whether the foreground service is ACTUALLY alive (fresh heartbeat). */
+    val serviceAlive: Boolean = false,
     val pendingCount: Int = 0,
     val queueDepth: Int = 0,
     val heartbeatMs: Long = 0L,
@@ -57,6 +60,7 @@ data class UiState(
 
 private data class GatewayHead(
     val isRunning: Boolean,
+    val serviceAlive: Boolean,
     val pendingCount: Int,
     val queueDepth: Int,
     val heartbeatMs: Long,
@@ -129,6 +133,13 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     val providers = MutableStateFlow<List<String>>(settings.getSenders().sorted())
     val newProvider = MutableStateFlow("")
     private val serviceOn = MutableStateFlow(settings.serviceEnabled)
+
+    /** Liveness truth: persisted toggle alone can lie after an app update. */
+    val serviceAlive = MutableStateFlow(
+        com.paysync.gateway.util.ServiceHealth.isAlive(
+            settings.serviceHeartbeatMs, System.currentTimeMillis(), settings.pollingIntervalMs
+        )
+    )
     val heartbeatMs = MutableStateFlow(settings.lastHeartbeat)
     val lastPollMs = MutableStateFlow(settings.lastPollMs)
 
@@ -198,6 +209,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     ) { head: GatewayHead, tail: GatewayTail, device: DeviceHead ->
         UiState(
             isRunning = head.isRunning,
+            serviceAlive = head.serviceAlive,
             pendingCount = head.pendingCount,
             queueDepth = head.queueDepth,
             heartbeatMs = head.heartbeatMs,
@@ -215,6 +227,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope,
         SharingStarted.Eagerly,
         UiState(
+            serviceAlive = com.paysync.gateway.util.ServiceHealth.isAlive(
+                settings.serviceHeartbeatMs, System.currentTimeMillis(), settings.pollingIntervalMs
+            ),
             isOnline = monitor.isOnlineNow(),
             networkLabel = monitor.transport.value,
             batteryPct = _batteryPct.value,
@@ -225,11 +240,12 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     )
 
     private fun headFlow(): Flow<GatewayHead> = combine(
-        serviceOn, pendingCount, queueDepth, heartbeatMs, lastPollMs, recentDispatches
+        serviceOn, pendingCount, queueDepth, heartbeatMs, lastPollMs, recentDispatches, serviceAlive
     ) { args: Array<Any> ->
         @Suppress("UNCHECKED_CAST")
         GatewayHead(
             isRunning = args[0] as Boolean,
+            serviceAlive = args[6] as Boolean,
             pendingCount = args[1] as Int,
             queueDepth = args[2] as Int,
             heartbeatMs = args[3] as Long,
@@ -281,6 +297,10 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                 heartbeatMs.value = settings.lastHeartbeat
                 lastPollMs.value = settings.lastPollMs
                 serviceOn.value = settings.serviceEnabled
+                serviceAlive.value = com.paysync.gateway.util.ServiceHealth.isAlive(
+                    settings.serviceHeartbeatMs, System.currentTimeMillis(),
+                    settings.pollingIntervalMs
+                )
                 refreshBattery()
                 delay(5_000L)
             }
@@ -327,6 +347,9 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     fun refresh() {
         providers.value = settings.getSenders().sorted()
         serviceOn.value = settings.serviceEnabled
+        serviceAlive.value = com.paysync.gateway.util.ServiceHealth.isAlive(
+            settings.serviceHeartbeatMs, System.currentTimeMillis(), settings.pollingIntervalMs
+        )
         heartbeatMs.value = settings.lastHeartbeat
         lastPollMs.value = settings.lastPollMs
         amountFallback.value = settings.amountFallbackEnabled

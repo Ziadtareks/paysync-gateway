@@ -65,6 +65,11 @@ class SettingsManager private constructor(context: Context) {
         get() = prefs.getLong(KEY_HEALTH_LAST_ALERT, 0L)
         set(value) { prefs.edit().putLong(KEY_HEALTH_LAST_ALERT, value).apply() }
 
+    /** Last liveness tick written by the foreground service loop (0 = never run). */
+    var serviceHeartbeatMs: Long
+        get() = prefs.getLong(KEY_SERVICE_HEARTBEAT, 0L)
+        set(value) { prefs.edit().putLong(KEY_SERVICE_HEARTBEAT, value).apply() }
+
     /** Opt-out update check (default ON). See PRIVACY.md for the disclosure. */
     var updateCheckEnabled: Boolean
         get() = prefs.getBoolean(KEY_UPDATE_CHECK, true)
@@ -162,6 +167,7 @@ class SettingsManager private constructor(context: Context) {
         const val KEY_HEALTH_FIRST_FAIL = "health_first_failure_at"
         const val KEY_HEALTH_LAST_ALERT = "health_last_alert_at"
         const val KEY_UPDATE_CHECK = "update_check_enabled"
+        const val KEY_SERVICE_HEARTBEAT = "service_heartbeat_ms"
         const val KEY_LAST_UPDATE_CHECK = "last_update_check_at"
 
         const val DEFAULT_BOT_URL = "https://api.mybot.com"

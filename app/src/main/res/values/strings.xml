@@ -77,6 +77,14 @@
     <string name="update_card_body">A newer version of PaySync Gateway is published on GitHub. Updates are never installed automatically — review and install manually.</string>
     <string name="update_card_button">Open releases page</string>
 
+    <!-- Honest gateway status (2.2) + update-resume fallback (2.1) -->
+    <string name="gateway_stale">Gateway stopped after update</string>
+    <string name="gateway_stale_hint">The update killed the 24/7 service. Tap Restart to resume verification.</string>
+    <string name="restart_gateway">Restart Gateway</string>
+    <string name="alert_stopped_text">The gateway service is not running (for %1$d minutes), so payments are not being verified. Open the app and press Start.</string>
+    <string name="update_stopped_title">Gateway stopped after update</string>
+    <string name="update_stopped_text">Tap to reopen PaySync Gateway and resume payment verification.</string>
+
     <!-- Permissions -->
     <string name="perms_title">Permissions needed</string>
     <string name="perms_subtitle">PaySync needs these to verify payments around the clock. Grant them once and you are done.</string>
