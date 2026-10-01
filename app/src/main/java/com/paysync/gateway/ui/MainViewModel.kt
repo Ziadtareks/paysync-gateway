@@ -1,5 +1,6 @@
 package com.paysync.gateway.ui
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -135,11 +136,25 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     private val serviceOn = MutableStateFlow(settings.serviceEnabled)
 
     /** Liveness truth: persisted toggle alone can lie after an app update. */
-    val serviceAlive = MutableStateFlow(
-        com.paysync.gateway.util.ServiceHealth.isAlive(
+    val serviceAlive = MutableStateFlow(computeServiceAlive())
+
+    /**
+     * Ground truth for the Dashboard: a fresh heartbeat AND the service
+     * actually present in this app's running-service list. The running check
+     * corrects the small window right after a kill where the heartbeat has
+     * not gone stale yet (e.g. force-stop, then relaunch).
+     */
+    fun computeServiceAlive(): Boolean {
+        val fresh = com.paysync.gateway.util.ServiceHealth.isAlive(
             settings.serviceHeartbeatMs, System.currentTimeMillis(), settings.pollingIntervalMs
         )
-    )
+        if (!fresh) return false
+        val am = container.appContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        @Suppress("DEPRECATION")
+        return am?.getRunningServices(200)?.any {
+            it.service.className == com.paysync.gateway.service.PaymentForegroundService::class.java.name
+        } ?: false
+    }
     val heartbeatMs = MutableStateFlow(settings.lastHeartbeat)
     val lastPollMs = MutableStateFlow(settings.lastPollMs)
 
@@ -227,9 +242,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope,
         SharingStarted.Eagerly,
         UiState(
-            serviceAlive = com.paysync.gateway.util.ServiceHealth.isAlive(
-                settings.serviceHeartbeatMs, System.currentTimeMillis(), settings.pollingIntervalMs
-            ),
+            serviceAlive = computeServiceAlive(),
             isOnline = monitor.isOnlineNow(),
             networkLabel = monitor.transport.value,
             batteryPct = _batteryPct.value,
@@ -297,10 +310,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
                 heartbeatMs.value = settings.lastHeartbeat
                 lastPollMs.value = settings.lastPollMs
                 serviceOn.value = settings.serviceEnabled
-                serviceAlive.value = com.paysync.gateway.util.ServiceHealth.isAlive(
-                    settings.serviceHeartbeatMs, System.currentTimeMillis(),
-                    settings.pollingIntervalMs
-                )
+                serviceAlive.value = computeServiceAlive()
                 refreshBattery()
                 delay(5_000L)
             }
@@ -347,9 +357,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     fun refresh() {
         providers.value = settings.getSenders().sorted()
         serviceOn.value = settings.serviceEnabled
-        serviceAlive.value = com.paysync.gateway.util.ServiceHealth.isAlive(
-            settings.serviceHeartbeatMs, System.currentTimeMillis(), settings.pollingIntervalMs
-        )
+        serviceAlive.value = computeServiceAlive()
         heartbeatMs.value = settings.lastHeartbeat
         lastPollMs.value = settings.lastPollMs
         amountFallback.value = settings.amountFallbackEnabled
