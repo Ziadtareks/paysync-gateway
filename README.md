@@ -55,10 +55,10 @@ apksigner verify --print-certs PaySync-Gateway.apk
 # SHA-256: b28b28630e30714332f0857bd8d13380e5af7294bfb2cde6475ef64fa52c8748
 ```
 
-**Verify the file checksum** (sha256 of the APK itself, v1.1.0):
+**Verify the file checksum** (sha256 of the APK itself, v1.1.1):
 
 ```bash
-echo "1b7027b78096211b0a56dfc60963af6957ceffb540ab7c691b94adbf19584ec9  PaySync-Gateway.apk" | sha256sum -c -
+echo "4e37d9a15c0a29755221b7825c332628d690d7df00a122841d2c5b71fe1a7d63  PaySync-Gateway.apk" | sha256sum -c -
 ```
 
 ## ✨ What is it?
