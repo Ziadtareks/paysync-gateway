@@ -25,3 +25,6 @@ backend/.env
 # OS
 .DS_Store
 Thumbs.db
+
+# Local test-driver state (fake backend config)
+backend_config.json
