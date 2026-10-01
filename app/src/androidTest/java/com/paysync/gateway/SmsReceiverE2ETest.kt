@@ -228,9 +228,15 @@ class SmsReceiverE2ETest {
         broadcastSms("HACKED", vfEnSms) // near-miss attacker sender
         Thread.sleep(3_000)
 
-        assertEquals(0, server.requestCount)
+        // The security property: nothing processed, nothing enqueued, nothing
+        // confirmed. (A background WorkManager poll may still GET the fake
+        // server — harmless — so the raw request count is not asserted.)
         assertEquals(0, queueCount())
         assertEquals(0, confirmedLogCount())
+        assertEquals(
+            "non-allowed sender must not reach the parser",
+            0, container.db.capturedSmsDao().recentFlow(50).first().size
+        )
     }
 
     // ── 6a) Ambiguous amount never confirms ──────────────────────────────

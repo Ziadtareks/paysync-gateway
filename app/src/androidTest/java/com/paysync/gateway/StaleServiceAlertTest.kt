@@ -12,6 +12,7 @@ import com.paysync.gateway.service.PaymentForegroundService
 import com.paysync.gateway.util.ServiceHealth
 import com.paysync.gateway.work.PollingWorker
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,6 +27,9 @@ import org.junit.runner.RunWith
 class StaleServiceAlertTest {
 
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
+
+    @Before
+    fun grantNotifPermission() = grantPostNotifications()
 
     private fun alertVisible(): Boolean {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
