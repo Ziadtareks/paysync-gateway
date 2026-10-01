@@ -3,6 +3,33 @@
 All notable changes to PaySync Gateway are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.1] — 2026-10-01
+
+Fix release for a reliability bug found during the v1.1.0 upgrade test.
+
+### Fixed
+
+- **The gateway now resumes by itself after an app update.** Android kills the
+  24/7 foreground service during an in-place update while the toggle stayed
+  ON — the Dashboard kept saying "Running" with nothing actually running.
+  On `MY_PACKAGE_REPLACED` (an officially exempted broadcast for background
+  foreground-service starts) the service now restarts when the toggle is ON;
+  if a start is ever denied, the app falls back to the WorkManager poller and
+  a high-priority "Gateway stopped after update, tap to resume" notification.
+- **The Dashboard status is honest.** The status now reflects whether the
+  service is actually alive (fresh service heartbeat), not just the persisted
+  toggle: "Running" (green), "Stopped" (off), and a new amber "Gateway
+  stopped after update" state with a one-tap **Restart Gateway** button.
+- **The "Gateway is not verifying payments" alert now also fires when the
+  service is dead while the toggle is ON** (detected by the 15-minute
+  WorkManager poller watchdog). Same 5-minute threshold and 30-minute rate
+  limiting as before.
+
+### Notes
+
+- Wire protocol unchanged; settings and database are preserved by the update.
+  New settings key (`service_heartbeat_ms`) is additive; Room schema unchanged.
+
 ## [1.1.0] — 2026-09-30
 
 Security- and reliability-hardening release. Wire protocol unchanged —

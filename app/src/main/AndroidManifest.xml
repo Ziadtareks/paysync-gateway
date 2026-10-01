@@ -70,6 +70,19 @@
             </intent-filter>
         </receiver>
 
+        <!-- Resume the gateway after an in-place app update (toggle was ON):
+             ACTION_MY_PACKAGE_REPLACED is an exempted background FGS start
+             per developer.android.com/develop/background-work/services/fgs/
+             restrictions-bg-start -->
+        <receiver
+            android:name=".receiver.UpdateResumedReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Auto-start gateway after reboot (only if the user had it enabled) -->
         <receiver
             android:name=".receiver.BootReceiver"

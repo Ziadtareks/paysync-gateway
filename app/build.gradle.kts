@@ -24,10 +24,9 @@ android {
         applicationId = "com.paysync.gateway"
         minSdk = 26
         targetSdk = 34
-        // 2 / 1.1.0: hardening release above the published v1.0.0 (versionCode 1).
-        // Minor bump (not patch): new safety features + settings, wire protocol unchanged.
-        versionCode = 2
-        versionName = "1.1.0"
+        // 3 / 1.1.1: service-resume fix above the published v1.1.0 (versionCode 2).
+        versionCode = 3
+        versionName = "1.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true

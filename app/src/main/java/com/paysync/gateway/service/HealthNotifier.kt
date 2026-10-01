@@ -29,6 +29,7 @@ object HealthNotifier {
 
     const val ALERT_CHANNEL_ID = "gateway_alerts"
     const val ALERT_NOTIF_ID = 1002
+    const val UPDATE_STOPPED_NOTIF_ID = 1003
 
     /** Continuous-failure duration before the first alert (spec default: 5 min). */
     const val FAILURE_ALERT_AFTER_MS = 5L * 60_000L
@@ -55,6 +56,78 @@ object HealthNotifier {
 
         settings.healthLastAlertAt = now
         postAlert(appContext, failingFor)
+    }
+
+    /**
+     * Watchdog path: the toggle is ON but the service heartbeat is stale
+     * (service killed — e.g. by an in-place app update). Same alert, channel
+     * and rate limiting as the poll-failure path; the "dead since" clock is
+     * the last heartbeat, so the 5-minute threshold is honored against the
+     * real outage start.
+     */
+    fun onServiceDead(context: Context, deadSinceMs: Long, now: Long = System.currentTimeMillis()) {
+        val appContext = context.applicationContext
+        val settings = SettingsManager.get(appContext)
+        if (!settings.isConfigured()) return // setup phase, not an outage
+        // A zero/absent heartbeat means the service never ran since install —
+        // treat it as dead for at least the full threshold already.
+        val deadFor = if (deadSinceMs <= 0L) {
+            FAILURE_ALERT_AFTER_MS
+        } else {
+            now - deadSinceMs
+        }
+        if (deadFor < FAILURE_ALERT_AFTER_MS) return
+        if (now - settings.healthLastAlertAt < RE_NOTIFY_INTERVAL_MS) return
+
+        settings.healthLastAlertAt = now
+        createChannel(appContext)
+        val mgr = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val minutes = (deadFor / 60_000L).coerceAtLeast(1)
+        val openApp = PendingIntent.getActivity(
+            appContext, 0,
+            Intent(appContext, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification: Notification = NotificationCompat.Builder(appContext, ALERT_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setContentTitle(appContext.getString(R.string.alert_title))
+            .setContentText(appContext.getString(R.string.alert_stopped_text, minutes))
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText(appContext.getString(R.string.alert_stopped_text, minutes)))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(openApp)
+            .build()
+        mgr.notify(ALERT_NOTIF_ID, notification)
+    }
+
+    /**
+     * Fallback for the update-resume path: posted ONLY when starting the
+     * service after MY_PACKAGE_REPLACED was denied. One tap reopens the app
+     * where the Dashboard offers a one-tap restart.
+     */
+    fun postUpdateStoppedNotification(context: Context) {
+        val appContext = context.applicationContext
+        createChannel(appContext)
+        val mgr = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val openApp = PendingIntent.getActivity(
+            appContext, 1,
+            Intent(appContext, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification: Notification = NotificationCompat.Builder(appContext, ALERT_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setContentTitle(appContext.getString(R.string.update_stopped_title))
+            .setContentText(appContext.getString(R.string.update_stopped_text))
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText(appContext.getString(R.string.update_stopped_text)))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(openApp)
+            .build()
+        mgr.notify(UPDATE_STOPPED_NOTIF_ID, notification)
     }
 
     /** Clear the alert without touching failure tracking (e.g. service stop by user). */

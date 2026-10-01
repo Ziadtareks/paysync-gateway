@@ -78,6 +78,7 @@ class PaymentForegroundService : Service() {
         } catch (e: Exception) {
             AppLog.e(TAG, "startForeground failed", e)
         }
+        SettingsManager.get(this).serviceHeartbeatMs = System.currentTimeMillis()
         startPollLoop()
         // Flush any backlog from downtime/reboot, then keep the periodic net.
         runCatching { DispatchWorker.enqueueDrain(applicationContext) }
@@ -111,6 +112,9 @@ class PaymentForegroundService : Service() {
                 return@launch
             }
             while (isActive) {
+                // Liveness truth for the UI and the WorkManager watchdog.
+                SettingsManager.get(applicationContext).serviceHeartbeatMs =
+                    System.currentTimeMillis()
                 try {
                     container.repo.pollPending()
                     val pending = container.db.pendingVerifyDao().liveOnce().size

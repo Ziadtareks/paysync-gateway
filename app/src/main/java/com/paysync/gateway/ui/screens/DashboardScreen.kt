@@ -190,6 +190,7 @@ fun DashboardScreen(
             Spacer(Modifier.height(8.dp))
             GatewayControlCard(
                 running = ui.isRunning,
+                serviceAlive = ui.serviceAlive,
                 onToggle = onToggle
             )
         }
@@ -479,10 +480,15 @@ private fun DeviceHealthCard(
 @Composable
 private fun GatewayControlCard(
     running: Boolean,
+    serviceAlive: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
-    val backgroundBrush = if (running) GatewayRunningGradient else GatewayStoppedGradient
-    val glowShadow = if (running) CardGlowRunning else CardGlowStopped
+    // Three honest states: off, genuinely running, and "toggle ON but the
+    // service is dead" (e.g. killed by an app update) — which must never
+    // present itself as Running.
+    val stale = running && !serviceAlive
+    val backgroundBrush = if (running && serviceAlive) GatewayRunningGradient else GatewayStoppedGradient
+    val glowShadow = if (running && serviceAlive) CardGlowRunning else CardGlowStopped
 
     Card(
         modifier = Modifier
@@ -519,15 +525,18 @@ private fun GatewayControlCard(
                         Spacer(Modifier.height(4.dp))
 
                         AnimatedContent(
-                            targetState = running,
+                            targetState = stale to (running && serviceAlive),
                             transitionSpec = {
                                 fadeIn(tween(400)) togetherWith fadeOut(tween(400))
                             },
                             label = "gatewayStatus"
-                        ) { isRunning ->
+                        ) { state ->
                             Text(
-                                if (isRunning) stringResource(R.string.gateway_running)
-                                else stringResource(R.string.gateway_stopped),
+                                when {
+                                    state.second -> stringResource(R.string.gateway_running)
+                                    state.first -> stringResource(R.string.gateway_stale)
+                                    else -> stringResource(R.string.gateway_stopped)
+                                },
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -535,18 +544,22 @@ private fun GatewayControlCard(
                         }
                     }
 
-                    BeaconPulsing(running = running)
+                    BeaconPulsing(running = running && serviceAlive)
                 }
 
                 // Tactile Action Button
                 Button(
-                    onClick = { onToggle(!running) },
+                    onClick = { onToggle(!(running && serviceAlive)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (running) Color(0xFFE11D48) else Color(0xFF4F46E5),
+                        containerColor = when {
+                            running && serviceAlive -> Color(0xFFE11D48)
+                            running -> Color(0xFFD97706)
+                            else -> Color(0xFF4F46E5)
+                        },
                         contentColor = Color.White
                     ),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
@@ -558,10 +571,20 @@ private fun GatewayControlCard(
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        if (running) stringResource(R.string.stop_gateway)
-                        else stringResource(R.string.start_gateway),
+                        when {
+                            running && serviceAlive -> stringResource(R.string.stop_gateway)
+                            running -> stringResource(R.string.restart_gateway)
+                            else -> stringResource(R.string.start_gateway)
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
+                    )
+                }
+                if (running && !serviceAlive) {
+                    Text(
+                        stringResource(R.string.gateway_stale_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.85f)
                     )
                 }
             }

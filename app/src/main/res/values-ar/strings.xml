@@ -76,6 +76,14 @@
     <string name="update_card_body">يوجد إصدار أحدث من PaySync Gateway على GitHub. لا يتم التثبيت تلقائيًا أبدًا — راجع التحديث وثبّته يدويًا.</string>
     <string name="update_card_button">فتح صفحة الإصدارات</string>
 
+    <!-- Honest gateway status (2.2) + update-resume fallback (2.1) -->
+    <string name="gateway_stale">توقفت البوابة بعد التحديث</string>
+    <string name="gateway_stale_hint">أوقف التحديث الخدمة الدائمة. اضغط «إعادة التشغيل» لاستئناف التحقق.</string>
+    <string name="restart_gateway">إعادة تشغيل البوابة</string>
+    <string name="alert_stopped_text">خدمة البوابة لا تعمل (منذ %1$d دقيقة)، لذلك لا يتم التحقق من المدفوعات. افتح التطبيق واضغط «تشغيل».</string>
+    <string name="update_stopped_title">توقفت البوابة بعد التحديث</string>
+    <string name="update_stopped_text">اضغط لفتح PaySync Gateway واستئناف التحقق من المدفوعات.</string>
+
     <!-- Permissions -->
     <string name="perms_title">الأذونات المطلوبة</string>
     <string name="perms_subtitle">تحتاج PaySync هذه الأذونات للتحقق من المدفوعات على مدار الساعة. امنحها مرة واحدة فقط.</string>

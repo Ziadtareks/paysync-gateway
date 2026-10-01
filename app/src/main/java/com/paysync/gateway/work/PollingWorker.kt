@@ -24,23 +24,36 @@ class PollingWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         val container = (applicationContext as? PaySyncApp)?.container
             ?: return Result.failure()
         val repo = container.repo
-        return try {
+        val result = try {
             repo.pollPending()
-            // The worker is CONNECTED-constrained, so reaching here with the
-            // backend configured means the poll went through on the network.
-            if (container.settings.isConfigured()) {
-                com.paysync.gateway.service.HealthNotifier.onPollSuccess(applicationContext)
-            }
             Result.success()
         } catch (e: IOException) {
             AppLog.w(TAG, "poll failed (io), retrying: ${e.message}")
-            com.paysync.gateway.service.HealthNotifier.onPollFailure(applicationContext)
             Result.retry()
         } catch (e: Exception) {
             AppLog.e(TAG, "poll failed", e)
-            com.paysync.gateway.service.HealthNotifier.onPollFailure(applicationContext)
             Result.failure()
         }
+        // Service watchdog: with the toggle ON, alert when the foreground
+        // service is actually dead (stale heartbeat) — the persisted toggle
+        // alone is not proof that verification is running. Recovery (fresh
+        // heartbeat + successful poll) clears the alert as before.
+        val settings = container.settings
+        if (settings.serviceEnabled) {
+            val now = System.currentTimeMillis()
+            val beat = settings.serviceHeartbeatMs
+            val alive = com.paysync.gateway.util.ServiceHealth.isAlive(
+                beat, now, settings.pollingIntervalMs
+            )
+            if (alive) {
+                if (result == Result.success() && settings.isConfigured()) {
+                    com.paysync.gateway.service.HealthNotifier.onPollSuccess(applicationContext)
+                }
+            } else {
+                com.paysync.gateway.service.HealthNotifier.onServiceDead(applicationContext, beat, now)
+            }
+        }
+        return result
     }
 
     companion object {
