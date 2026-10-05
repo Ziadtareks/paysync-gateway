@@ -1,30 +1,47 @@
-# Gradle
+# ── Gradle / build outputs ───────────────────────────────────────────
 .gradle/
 build/
-app/build/
-app/release/
+*/build/
+.kotlin/
+.externalNativeBuild/
+.cxx/
+captures/
 local.properties
-*.iml
 
-# Android Studio
+# Built packages — published as GitHub Release assets, never committed
+*.apk
+*.aab
+*.ap_
+*.dex
+output-metadata.json
+app/release/
+app/debug/
+
+# ── Android Studio / IntelliJ / other IDEs ───────────────────────────
 .idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+.vscode/
 *.hprof
 crashlytics-build.properties
 
-# Keystores & secrets — NEVER commit
+# ── Keystores & secrets — NEVER commit ───────────────────────────────
 *.jks
 *.keystore
 keystore.properties
 google-services.json
 paysync_secure_prefs.xml
-
-# Backend secrets — NEVER commit
-backend/.env
+paysync_settings_v2.xml
 .env
+backend/.env
 
-# OS
+# ── OS / editor noise ────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+*.swp
+*~
 
-# Local test-driver state (fake backend config)
+# ── Local test-driver state (fake backend config) ────────────────────
 backend_config.json

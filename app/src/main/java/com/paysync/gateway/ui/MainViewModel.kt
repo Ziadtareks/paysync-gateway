@@ -295,8 +295,7 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     // ─── Init: collect network flows on Main.immediate ────────────────
 
     init {
-        // Glitch Fix #1: Network Monitor Delay — collect the
-        // NetworkMonitor StateFlow explicitly on Dispatchers.Main.immediate
+        // Collect the NetworkMonitor StateFlow explicitly on Dispatchers.Main.immediate
         // so UI recomposes in the exact same frame the network drops.
         viewModelScope.launch(Dispatchers.Main.immediate) {
             monitor.isOnline.collect { online ->

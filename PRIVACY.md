@@ -1,6 +1,6 @@
 # Privacy Policy — PaySync Gateway
 
-**Last updated: 2026-09-29 (v1.1.0)** · [العربية أدناه](#سياسة-الخصوصية--بوليصة-الخصوصية)
+**Last updated: 2026-10-05 (v1.2.0)** · [العربية أدناه](#سياسة-الخصوصية--بوليصة-الخصوصية)
 
 PaySync Gateway is an open-source app (MIT) that runs **on your own phone**
 and reports wallet payments **to a backend you configure yourself**. There is
@@ -81,7 +81,7 @@ Turn it off in Settings → Matching Safety → *Check for updates*. Errors
 
 # سياسة الخصوصية — PaySync Gateway
 
-**آخر تحديث: ٢٠٢٦-٠٩-٢٩ (الإصدار 1.1.0)**
+**آخر تحديث: ٢٠٢٦-١٠-٠٥ (الإصدار 1.2.0)**
 
 تطبيق PaySync Gateway مفتوح المصدر (رخصة MIT) يعمل **على هاتفك أنت** ويرسل
 تفاصيل مدفوعات المحفظة **إلى سيرفر خلفي تضبطه بنفسك**. لا يوجد أي سيرفر

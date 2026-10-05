@@ -86,7 +86,7 @@ class DispatchWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val dao = container.db.dispatchQueueDao()
         val payload = container.repo.payloadFrom(item)
         if (payload == null) {
-            AppLog.w(TAG, "corrupt outbox row ${item.id} for ${item.verifyId}, dead-lettering")
+            AppLog.w(TAG, "corrupt outbox row ${item.id}, dead-lettering")
             dao.deleteById(item.id)
             container.repo.logDispatch(item.verifyId, "${item.status} (failed)", "Corrupt outbox row")
             return ItemOutcome.DONE
@@ -104,7 +104,7 @@ class DispatchWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 }
                 !result.retryable -> {
                     // Permanent rejection (e.g. 404 unknown verify_id): drop, never retry.
-                    AppLog.w(TAG, "dead-letter ${item.verifyId}: ${result.error}")
+                    AppLog.w(TAG, "dead-letter row ${item.id}: ${result.error}")
                     dao.deleteById(item.id)
                     container.repo.logDispatch(
                         payload.verifyId, "${payload.status} (failed)", result.error ?: "HTTP error"
@@ -115,7 +115,7 @@ class DispatchWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     attempt++
                     dao.bumpAttempt(item.id, result.error)
                     if (attempt >= MAX_ATTEMPTS_PER_RUN) {
-                        AppLog.w(TAG, "still failing ${item.verifyId} (${result.error}); kept for a later retry")
+                        AppLog.w(TAG, "row ${item.id} still failing (${result.error}); kept for a later retry")
                         return ItemOutcome.RETRY_LATER
                     }
                     delay(backoffMs[minOf(attempt - 1, backoffMs.lastIndex)])

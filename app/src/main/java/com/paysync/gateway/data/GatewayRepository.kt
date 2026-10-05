@@ -150,7 +150,7 @@ class GatewayRepository(
                     "Amount above auto-confirm cap: ${"%.2f".format(parsed.amount)} EGP • " +
                         "${parsed.provider} • ref ${parsed.referenceId ?: "—"}"
                 )
-                AppLog.w(TAG, "Verify ${outcome.verify.verifyId} above auto-confirm cap — manual review")
+                AppLog.w(TAG, "Match above auto-confirm cap — manual review")
             }
             is MatchOutcome.AmountMismatch -> {
                 // The reference points at this deposit but the money does not
@@ -160,7 +160,7 @@ class GatewayRepository(
                     "Reference matches but amount ${"%.2f".format(outcome.received)} EGP ≠ expected " +
                         "${"%.2f".format(outcome.expected)} EGP • ref ${parsed.referenceId ?: "—"} — not confirmed"
                 )
-                AppLog.w(TAG, "Verify ${outcome.verify.verifyId}: reference matches, amount differs — not confirmed")
+                AppLog.w(TAG, "Reference matches but amount differs — not confirmed")
             }
             is MatchOutcome.Ambiguous -> {
                 logDispatch(

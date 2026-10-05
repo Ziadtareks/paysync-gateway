@@ -1,8 +1,8 @@
-# Real-device test checklist (v1.2 hardening release)
+# Real-device test checklist
 
-Run this on **real phones after CI is green**, ideally two different brands
-(e.g. one Samsung + one Xiaomi/Oppo/Realme). OEM Keystore implementations
-differ, and that is exactly what an emulator cannot show you.
+Run this on **real phones before publishing a release**, ideally two
+different brands (e.g. one Samsung + one Xiaomi/Oppo/Realme). OEM Keystore
+implementations differ, and that is exactly what an emulator cannot show you.
 
 Tip: a **debug** build lets you inspect files and see all logs:
 `adb logcat -s SettingsStorage EncryptedPrefs GatewayRepo DispatchWorker SmsReceiver`.
@@ -12,7 +12,8 @@ Release builds only log warnings/errors (no output = nothing went wrong).
 
 Upgrade path — this is what every existing user goes through:
 
-- [ ] Install the **current public v1.1.1 APK** on the phone.
+- [ ] Install the **previous public release** on the phone (use **v1.1.1**
+      to exercise the one-time migration from the legacy settings file).
 - [ ] In Settings enter: Bot API URL, webhook secret, add one extra allowed
       sender, set poll interval to e.g. 30 s, turn the gateway ON.
 - [ ] Install the **new APK over it** (do NOT uninstall).

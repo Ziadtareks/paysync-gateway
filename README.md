@@ -8,10 +8,9 @@ The app polls your backend for pending deposits, matches them against incoming
 wallet SMS (Vodafone Cash, InstaPay/NBE, BM, CIB, …), and dispatches
 `confirmed` / `timeout` results back — fully automatic, all amounts in **EGP**.
 
-[![Download APK v1.2.0](https://img.shields.io/badge/⬇️_Download-APK_v1.2.0-4F46E5?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Ziadtareks/paysync-gateway/raw/main/release/app-release.apk)
-[![Releases](https://img.shields.io/badge/All_releases-here-1F2937?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Ziadtareks/paysync-gateway/releases)
+[![Download latest release](https://img.shields.io/github/v/release/Ziadtareks/paysync-gateway?label=Download&style=for-the-badge&logo=android&logoColor=white&color=4F46E5)](https://github.com/Ziadtareks/paysync-gateway/releases/latest)
+[![All releases](https://img.shields.io/badge/All_releases-here-1F2937?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Ziadtareks/paysync-gateway/releases)
 
-![Version](https://img.shields.io/badge/version-1.2.0-4F46E5)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?logo=android&logoColor=white)
 ![Language](https://img.shields.io/badge/Kotlin-1.9-7F52FF?logo=kotlin&logoColor=white)
@@ -48,9 +47,9 @@ A payment-safety, reliability and security release. Full details:
 
 ## 📥 Download & install
 
-1. Download **[app-release.apk (v1.2.0)](https://github.com/Ziadtareks/paysync-gateway/raw/main/release/app-release.apk)**
-   (also kept in the repo at [`release/app-release.apk`](release/app-release.apk);
-   older versions on the [Releases page](https://github.com/Ziadtareks/paysync-gateway/releases)).
+1. Open the **[latest release](https://github.com/Ziadtareks/paysync-gateway/releases/latest)**
+   and download **`app-release.apk`** under *Assets* (older versions are on the
+   [Releases page](https://github.com/Ziadtareks/paysync-gateway/releases)).
 2. On the phone, open the file and allow installing from **unknown sources**
    when prompted (required for any app outside the Play Store).
    - **Play Protect** may warn about unknown apps — choose **Install anyway**
@@ -62,7 +61,7 @@ A payment-safety, reliability and security release. Full details:
 4. Review the [Privacy Policy](PRIVACY.md) — what the app reads, where it sends
    data, and how to delete everything.
 
-### Upgrading from v1.1.x
+### Upgrading an existing install
 
 **Install the new APK over the old one — do not uninstall.** It is signed with
 the same key, so Android updates it in place, the gateway resumes by itself,
@@ -232,11 +231,12 @@ cd paysync-gateway
 ```
 
 - **Release builds:** signed from a local, gitignored `keystore.properties`;
-  without it the release APK is left unsigned. Step-by-step:
+  without it the release APK is left unsigned. APKs are published only as
+  GitHub Release assets, never committed. Step-by-step:
   **[`docs/BUILD_RELEASE.md`](docs/BUILD_RELEASE.md)**.
 - **Before publishing:** run the real-device checklist
   **[`docs/DEVICE_TEST_CHECKLIST.md`](docs/DEVICE_TEST_CHECKLIST.md)** — above
-  all the upgrade-over-v1.1.x settings migration.
+  all the install-over-the-previous-release upgrade test.
 - A GitHub Actions workflow ([`ci.yml`](.github/workflows/ci.yml)) runs unit
   tests, lint, debug + release builds and the device tests on API 34/35
   emulators when Actions is enabled for the repository.

@@ -1,14 +1,15 @@
-# Building the release APK (v1.2.0)
+# Building & publishing a release
 
-The release APK must be built on **your** machine: it has to be signed with
-your release key (the same one as v1.1.x), otherwise it cannot be installed
-over an existing install and the settings migration cannot run.
+Release APKs are built and signed on the maintainer's machine. Every release
+must be signed with the **same release key** as all previous ones; otherwise
+Android refuses to install it over an existing install, and users would have
+to uninstall (losing their settings).
 
 ## Requirements
 
-- Android Studio (or JDK 17 + Android SDK with platform 34).
-- `keystore.properties` + your `.jks` file in the repo root (gitignored —
-  never commit them):
+- Android Studio, or JDK 17 + Android SDK platform 34.
+- `keystore.properties` + the release `.jks` file in the repo root. Both are
+  gitignored — never commit them:
 
   ```properties
   storeFile=your-release-key.jks
@@ -17,45 +18,51 @@ over an existing install and the settings migration cannot run.
   keyPassword=…
   ```
 
-## Build
+## 1. Prepare
 
-From the repo root, on branch `claude/quirky-ritchie-i58scf`:
+- Bump `versionCode` (+1) and `versionName` in `app/build.gradle.kts`.
+- Add the version's entry to [`CHANGELOG.md`](../CHANGELOG.md).
+
+## 2. Build
+
+From the repo root on `main`:
 
 ```bash
-# 1. Unit tests + lint + release build (R8). All must pass.
+# Unit tests + lint + signed release build (R8). All must pass.
 ./gradlew :app:testDebugUnitTest :app:lint :app:assembleRelease
 
-# 2. Optional but recommended: device tests on a connected phone/emulator
-#    (includes SettingsMigrationTest, RepositoryReliabilityTest, OutboxWorkerTest).
+# Device tests on a connected phone or emulator.
 ./gradlew :app:connectedDebugAndroidTest
 ```
 
+Output: `app/build/outputs/apk/release/app-release.apk`.
+
 If `keystore.properties` is missing, the build prints
 `release APK will be UNSIGNED` and produces `app-release-unsigned.apk` —
-do not ship that.
+never publish that file.
 
-Output: `app/build/outputs/apk/release/app-release.apk`
-
-## Verify before publishing
+## 3. Verify
 
 ```bash
-cp app/build/outputs/apk/release/app-release.apk PaySync-Gateway.apk
-
-# Must print the SAME certificate as v1.1.x:
+# Must print the release certificate:
 # SHA-256: b28b28630e30714332f0857bd8d13380e5af7294bfb2cde6475ef64fa52c8748
-apksigner verify --print-certs PaySync-Gateway.apk
+apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
 
-# New file checksum for the README:
-sha256sum PaySync-Gateway.apk
+# Checksum for the README "Verify the download" section:
+sha256sum app/build/outputs/apk/release/app-release.apk
 ```
 
-Then run `docs/DEVICE_TEST_CHECKLIST.md` (install over v1.1.1 first!).
+Then run the real-device checklist,
+[`DEVICE_TEST_CHECKLIST.md`](DEVICE_TEST_CHECKLIST.md) — always including the
+**install-over-the-previous-release** upgrade test.
 
-## Publish
+## 4. Publish
 
-1. Commit the signed APK as `release/app-release.apk` (the README download
-   button points to it on `main`) and put its `sha256sum` in README.md
-   ("Verify the download"); date the CHANGELOG heading.
-2. Recommended: also create GitHub release `v1.2.0` and attach the same file
-   as **`PaySync-Gateway.apk`**, so the Releases page and the in-app update
-   notice (which reads the latest GitHub release) know about it.
+1. Update the checksum and version in `README.md` and date the CHANGELOG entry.
+2. Tag the release commit `vX.Y.Z` and create a GitHub Release for it.
+3. Attach the APK as **`app-release.apk`** (keep this exact asset name: the
+   README links to the latest release, and the in-app update notice reads the
+   latest GitHub release).
+
+APKs are never committed to the repository (`*.apk` is gitignored); the
+GitHub Release is the only distribution channel.

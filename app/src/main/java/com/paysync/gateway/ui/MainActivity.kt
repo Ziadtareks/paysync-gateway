@@ -70,14 +70,14 @@ import com.paysync.gateway.work.PollingWorker
 /**
  * Single-activity host.
  *
- * Glitch fixes implemented:
- * 1. **Permission State Lag** — [LifecycleEventObserver] on ON_RESUME pushes
- *    permission truth to [MainViewModel] immediately, so the UI recomposes
- *    the instant the user returns from a system settings dialog.
- * 2. **Language Dropdown Hang** — `expanded = false` is set *before* calling
- *    [MainViewModel.setLanguage] inside each [DropdownMenuItem.onClick].
- * 3. **Network Monitor** — Not directly here; see [NetworkMonitor] +
- *    [MainViewModel] init block (Dispatchers.Main.immediate collection).
+ * UI responsiveness notes:
+ * - Permission state: a [LifecycleEventObserver] on ON_RESUME pushes the
+ *   current grants to [MainViewModel], so the UI updates the instant the
+ *   user returns from a system settings dialog.
+ * - Language menu: `expanded = false` is set *before* calling
+ *   [MainViewModel.setLanguage] inside each [DropdownMenuItem.onClick].
+ * - Network status: see [NetworkMonitor] and the [MainViewModel] init block
+ *   (collected on Dispatchers.Main.immediate).
  */
 class MainActivity : AppCompatActivity() {
 
@@ -101,7 +101,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ── Glitch Fix #2: Permission State Lag ──────────────────────
+        // ── Permission state refresh ──────────────────────────────────
         // ON_RESUME fires when returning from system dialogs, granting
         // permissions, or switching back from other apps.
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
@@ -330,9 +330,9 @@ class MainActivity : AppCompatActivity() {
     /**
      * Language switcher dropdown.
      *
-     * **Glitch Fix #3: Language Dropdown Hang** — `expanded = false` is set
-     * as the FIRST statement in each [DropdownMenuItem.onClick], guaranteeing
-     * the menu closes before any language change / activity recreation occurs.
+     * `expanded = false` is set as the FIRST statement in each
+     * [DropdownMenuItem.onClick], guaranteeing the menu closes before any
+     * language change / activity recreation occurs.
      */
     @Composable
     private fun LanguageMenu() {
