@@ -12,3 +12,5 @@
 *.webp binary
 *.keystore binary
 *.jks binary
+*.apk binary
+*.aab binary
