@@ -25,9 +25,9 @@ android {
         applicationId = "com.paysync.gateway"
         minSdk = 26
         targetSdk = 34
-        // 3 / 1.1.1: service-resume fix above the published v1.1.0 (versionCode 2).
-        versionCode = 3
-        versionName = "1.1.1"
+        // 4 / 1.2.0: payment-safety + Keystore settings release above v1.1.1 (versionCode 3).
+        versionCode = 4
+        versionName = "1.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true

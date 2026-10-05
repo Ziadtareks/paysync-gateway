@@ -3,7 +3,7 @@
 All notable changes to PaySync Gateway are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [1.2.0] — unreleased (build & publish pending)
 
 Correctness, security and reliability fixes from a full code review.
 **Upgrade note for backend owners:** the retry policy changed (see below) and
