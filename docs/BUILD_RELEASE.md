@@ -53,8 +53,9 @@ Then run `docs/DEVICE_TEST_CHECKLIST.md` (install over v1.1.1 first!).
 
 ## Publish
 
-1. Put the new `sha256sum` in README.md ("Verify the file checksum", v1.2.0)
-   and change the CHANGELOG heading `[1.2.0] — unreleased` to today's date.
-2. Create GitHub release `v1.2.0` and attach the file as
-   **`PaySync-Gateway.apk`** (exact name — the README download link points to
-   `releases/latest/download/PaySync-Gateway.apk`).
+1. Commit the signed APK as `release/app-release.apk` (the README download
+   button points to it on `main`) and put its `sha256sum` in README.md
+   ("Verify the download"); date the CHANGELOG heading.
+2. Recommended: also create GitHub release `v1.2.0` and attach the same file
+   as **`PaySync-Gateway.apk`**, so the Releases page and the in-app update
+   notice (which reads the latest GitHub release) know about it.
