@@ -1,25 +1,36 @@
 package com.paysync.gateway.data
 
 import com.google.gson.Gson
-import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import okio.Buffer
 import java.io.IOException
+import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * OkHttp client for the Telegram Bot backend.
  *
  * Security (per request, via [HmacInterceptor]):
- *  - X-Gateway-Secret: the shared secret (authenticates the gateway).
- *  - X-Gateway-Signature: HMAC-SHA256 hex of the raw POST JSON body.
+ *  - X-Gateway-Timestamp + X-Gateway-Signature-V2: HMAC-SHA256 over
+ *    timestamp, method, path, Idempotency-Key and body — on GET and POST.
+ *    Proves possession of the secret without sending it and lets the
+ *    server reject stale/replayed requests.
+ *  - X-Gateway-Signature: legacy HMAC-SHA256 hex of the raw POST JSON body.
+ *  - X-Gateway-Secret: the raw shared secret — legacy, sent only while
+ *    [SettingsManager.sendLegacySecretHeader] is on (default, for backends
+ *    that have not adopted V2 yet).
  *
  * Endpoints (relative to [SettingsManager.botApiUrl]):
  *  - GET  /transactions/pending  -> pending verification requests
@@ -35,86 +46,75 @@ class ApiClient(private val settings: SettingsManager) {
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .writeTimeout(20, TimeUnit.SECONDS)
+            // Hard cap on the whole call (DNS + connect + TLS + body). Unlike
+            // a coroutine timeout around a blocking execute(), this really
+            // aborts the socket.
+            .callTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .addInterceptor(HmacInterceptor(settings))
             .build()
     }
 
     data class HttpResult(val ok: Boolean, val code: Int = -1, val error: String? = null) {
-        /** 429 / 5xx / IO failures are worth retrying; other 4xx are dead-lettered. */
-        val retryable: Boolean get() = !ok && (code == -1 || code == 429 || code >= 500)
+        /**
+         * Only an explicit "this dispatch can never be processed" answer is
+         * dead-lettered (400 / 404 / 409 / 410 / 422). Everything else — IO
+         * failures, timeouts, 5xx, 429, and auth/config errors (401 / 403)
+         * that the merchant can fix — stays queued and is retried, so a
+         * confirmed payment is never silently dropped.
+         */
+        val retryable: Boolean get() = !ok && code !in PERMANENT_FAILURE_CODES
     }
 
     // ---------- pending ----------
 
+    // Body reads block on the socket: always on IO, whatever the caller's
+    // dispatcher (the UI's "Poll now" runs on Main).
     suspend fun fetchPending(): List<PendingVerifyDto> = withContext(Dispatchers.IO) {
         val base = requireConfiguredBase()
         val request = Request.Builder().url("$base/transactions/pending").get().build()
-        val response = withTimeoutOrNull(25_000L) { client.newCall(request).execute() }
-            ?: throw IOException("Timeout fetching pending transactions")
-        response.use { res ->
+        client.newCall(request).await().use { res ->
             val body = res.body?.string().orEmpty()
             if (!res.isSuccessful) throw IOException("GET pending failed: HTTP ${res.code}")
-            return@withContext parsePendingList(body)
+            parsePendingList(body)
         }
     }
 
-    /**
-     * Tolerant: accepts a bare JSON array or an object wrapping the array
-     * under pending / transactions / data / items.
-     */
-    fun parsePendingList(body: String): List<PendingVerifyDto> {
-        val trimmed = body.trim()
-        if (trimmed.isEmpty()) return emptyList()
-        val element = JsonParser.parseString(trimmed)
-        val array = when {
-            element.isJsonArray -> element.asJsonArray
-            element.isJsonObject -> {
-                val obj = element.asJsonObject
-                listOf("pending", "transactions", "data", "items")
-                    .firstNotNullOfOrNull { obj.getAsJsonArray(it) } ?: return emptyList()
-            }
-            else -> return emptyList()
-        }
-        return array.mapNotNull { runCatching { gson.fromJson(it, PendingVerifyDto::class.java) }.getOrNull() }
-            .filter { it.verifyId.isNotBlank() }
-    }
+    /** See [PendingListParser]: malformed items are skipped, never crash the poll. */
+    fun parsePendingList(body: String): List<PendingVerifyDto> = PendingListParser.parse(body)
 
     // ---------- dispatch ----------
 
     fun dispatchJson(payload: DispatchPayload): String = gson.toJson(payload)
 
     suspend fun postDispatch(payload: DispatchPayload, idempotencyKey: String): HttpResult =
-        withContext(Dispatchers.IO) {
-            val base = try {
-                requireConfiguredBase()
-            } catch (e: IllegalStateException) {
-                return@withContext HttpResult(false, -1, e.message)
-            }
-            val json = dispatchJson(payload)
+        withContext(Dispatchers.IO) { postDispatchIo(payload, idempotencyKey) }
+
+    private suspend fun postDispatchIo(payload: DispatchPayload, idempotencyKey: String): HttpResult {
+        val base = try {
+            requireConfiguredBase()
+        } catch (e: IllegalStateException) {
+            return HttpResult(false, -1, e.message)
+        }
+        val json = dispatchJson(payload)
+        return try {
             val request = Request.Builder()
                 .url("$base/transactions/dispatch")
                 .post(json.toRequestBody(jsonMediaType))
                 .header("Idempotency-Key", idempotencyKey)
                 .build()
-            try {
-                val response = withTimeoutOrNull(25_000L) { client.newCall(request).execute() }
-                    ?: return@withContext HttpResult(false, -1, "Timeout after 25s")
-                response.use { res ->
-                    return@withContext if (res.isSuccessful) {
-                        HttpResult(true, res.code)
-                    } else {
-                        HttpResult(false, res.code, "HTTP ${res.code}")
-                    }
-                }
-            } catch (e: IllegalArgumentException) {
-                HttpResult(false, -1, "Bad URL: ${e.message}")
-            } catch (e: IOException) {
-                HttpResult(false, -1, e.message ?: "Network error")
-            } catch (e: Exception) {
-                HttpResult(false, -1, e.message ?: e.javaClass.simpleName)
+            client.newCall(request).await().use { res ->
+                if (res.isSuccessful) HttpResult(true, res.code)
+                else HttpResult(false, res.code, "HTTP ${res.code}")
             }
+        } catch (e: IllegalArgumentException) {
+            HttpResult(false, -1, "Bad URL: ${e.message}")
+        } catch (e: InterruptedIOException) {
+            HttpResult(false, -1, "Timeout after ${CALL_TIMEOUT_SECONDS}s")
+        } catch (e: IOException) {
+            HttpResult(false, -1, e.message ?: "Network error")
         }
+    }
 
     // ---------- helpers ----------
 
@@ -132,28 +132,81 @@ class ApiClient(private val settings: SettingsManager) {
     }
 
     /**
-     * Signs every POST with HMAC-SHA256 of the raw body bytes exactly as they
-     * are written to the wire, and always identifies the gateway via
-     * X-Gateway-Secret. The secret is read lazily per request via
-     * [secretProvider] (testable without Android).
+     * Signs every request. V2 (GET + POST): HMAC-SHA256 over
+     * "v2\n{unix seconds}\n{METHOD}\n{encoded path?query}\n{Idempotency-Key}\n"
+     * followed by the raw body bytes exactly as written to the wire. Legacy
+     * headers (body-only X-Gateway-Signature on POST, raw X-Gateway-Secret)
+     * are kept for existing backends; the raw secret goes out only while
+     * [legacySecretHeader] returns true. The secret is read lazily per
+     * request via [secretProvider] (testable without Android).
      */
-    class HmacInterceptor(private val secretProvider: () -> String) : Interceptor {
-        constructor(settings: SettingsManager) : this({ settings.webhookSecret })
+    class HmacInterceptor(
+        private val legacySecretHeader: () -> Boolean = { true },
+        private val clock: () -> Long = { System.currentTimeMillis() },
+        private val secretProvider: () -> String
+    ) : Interceptor {
+        constructor(settings: SettingsManager) : this(
+            legacySecretHeader = { settings.sendLegacySecretHeader },
+            secretProvider = { settings.webhookSecret }
+        )
 
-        override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
+        override fun intercept(chain: Interceptor.Chain): Response {
             val original = chain.request()
             val secret = secretProvider()
+            if (secret.isBlank()) return chain.proceed(original)
+
             val builder = original.newBuilder()
-            if (secret.isNotBlank()) {
-                builder.header("X-Gateway-Secret", secret)
-                val body = original.body
-                if (original.method == "POST" && body != null) {
-                    val buffer = Buffer()
-                    body.writeTo(buffer)
-                    builder.header("X-Gateway-Signature", HmacSha256.hex(secret, buffer.readByteArray()))
-                }
+            val bodyBytes = original.body?.let { body ->
+                val buffer = Buffer()
+                body.writeTo(buffer)
+                buffer.readByteArray()
+            } ?: ByteArray(0)
+
+            if (legacySecretHeader()) builder.header("X-Gateway-Secret", secret)
+            if (original.method == "POST" && original.body != null) {
+                builder.header("X-Gateway-Signature", HmacSha256.hex(secret, bodyBytes))
             }
+            val ts = (clock() / 1000L).toString()
+            val pathAndQuery = original.url.encodedPath +
+                (original.url.encodedQuery?.let { "?$it" } ?: "")
+            builder.header("X-Gateway-Timestamp", ts)
+            builder.header(
+                "X-Gateway-Signature-V2",
+                HmacSha256.hex(
+                    secret,
+                    v2SigningPrefix(ts, original.method, pathAndQuery, original.header("Idempotency-Key"))
+                        .toByteArray(Charsets.UTF_8) + bodyBytes
+                )
+            )
             return chain.proceed(builder.build())
         }
     }
+
+    companion object {
+        const val CALL_TIMEOUT_SECONDS = 25L
+
+        /** HTTP codes meaning "permanently unprocessable" — dead-lettered, never retried. */
+        val PERMANENT_FAILURE_CODES = setOf(400, 404, 409, 410, 422)
+
+        /** Exact signed-string prefix for X-Gateway-Signature-V2 (body bytes follow). */
+        fun v2SigningPrefix(ts: String, method: String, pathAndQuery: String, idempotencyKey: String?): String =
+            "v2\n$ts\n${method.uppercase()}\n$pathAndQuery\n${idempotencyKey.orEmpty()}\n"
+    }
+}
+
+/**
+ * Suspends on an OkHttp call; coroutine cancellation cancels the socket
+ * (a blocking execute() inside withTimeout would keep running).
+ */
+internal suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
+    cont.invokeOnCancellation { runCatching { cancel() } }
+    enqueue(object : Callback {
+        override fun onResponse(call: Call, response: Response) {
+            if (cont.isActive) cont.resume(response) else response.close()
+        }
+
+        override fun onFailure(call: Call, e: IOException) {
+            if (cont.isActive) cont.resumeWithException(e)
+        }
+    })
 }

@@ -11,24 +11,43 @@ import androidx.security.crypto.MasterKey
  * Keys: [bot_api_url], [webhook_secret], [allowed_senders], [polling_interval_ms],
  * plus [verify_timeout_ms], [last_heartbeat], [service_enabled].
  *
- * Falls back to plain SharedPreferences if the Keystore is unavailable, so the
- * gateway keeps working on devices with broken keystore implementations.
+ * If the Keystore is unavailable (broken OEM keystore, transient failure),
+ * the encrypted file is retried once and then left UNTOUCHED: the gateway
+ * falls back to a SEPARATE plain file ([FALLBACK_FILE_NAME]) instead of
+ * opening the encrypted file as plain prefs (which made every setting
+ * unreadable and mixed plaintext secrets into it). [isEncrypted] exposes the
+ * degraded state so the UI can warn the user.
  */
 class SettingsManager private constructor(context: Context) {
 
-    private val prefs: SharedPreferences = try {
+    /** False when the Keystore failed and settings live in the plain fallback file. */
+    val isEncrypted: Boolean
+
+    private val prefs: SharedPreferences
+
+    init {
+        val appContext = context.applicationContext
+        val encrypted = openEncrypted(appContext) ?: openEncrypted(appContext)
+        isEncrypted = encrypted != null
+        prefs = encrypted ?: run {
+            com.paysync.gateway.util.AppLog.w("SettingsManager", "Keystore unavailable — using unencrypted fallback settings")
+            appContext.getSharedPreferences(FALLBACK_FILE_NAME, Context.MODE_PRIVATE)
+        }
+    }
+
+    private fun openEncrypted(appContext: Context): SharedPreferences? = try {
         @Suppress("DEPRECATION")
         EncryptedSharedPreferences.create(
-            context.applicationContext,
+            appContext,
             FILE_NAME,
-            MasterKey.Builder(context.applicationContext)
+            MasterKey.Builder(appContext)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build(),
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (_: Exception) {
-        context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+        null
     }
 
     var botApiUrl: String
@@ -103,6 +122,16 @@ class SettingsManager private constructor(context: Context) {
         get() = Double.fromBits(prefs.getLong(KEY_MAX_AMOUNT, 0L))
         set(value) { prefs.edit().putLong(KEY_MAX_AMOUNT, if (value > 0.0) value.toRawBits() else 0L).apply() }
 
+    /**
+     * Legacy compatibility: also send the raw secret as X-Gateway-Secret.
+     * Default ON so existing backends keep working; turn it OFF once the
+     * backend verifies X-Gateway-Signature-V2 (see BACKEND_API_CONTRACT.md)
+     * and the secret never travels over the wire again.
+     */
+    var sendLegacySecretHeader: Boolean
+        get() = prefs.getBoolean(KEY_LEGACY_SECRET_HEADER, true)
+        set(value) { prefs.edit().putBoolean(KEY_LEGACY_SECRET_HEADER, value).apply() }
+
     fun touchHeartbeat() {
         lastHeartbeat = System.currentTimeMillis()
     }
@@ -119,9 +148,14 @@ class SettingsManager private constructor(context: Context) {
             !url.contains("api.mybot.com")
     }
 
+    /**
+     * Defaults apply only on a fresh install (key never written). An empty
+     * set the user saved on purpose stays empty — removing the last sender
+     * must not silently re-enable the default senders.
+     */
     fun getSenders(): MutableSet<String> {
         val stored = prefs.getStringSet(KEY_SENDERS, null)
-        return if (stored.isNullOrEmpty()) HashSet(DEFAULT_SENDERS) else HashSet(stored)
+        return if (stored == null) HashSet(DEFAULT_SENDERS) else HashSet(stored)
     }
 
     fun addSender(name: String): Set<String> {
@@ -147,13 +181,15 @@ class SettingsManager private constructor(context: Context) {
 
     fun removeSender(name: String): Set<String> {
         val current = getSenders()
-        current.remove(name)
+        current.removeAll { it.trim().equals(name.trim(), ignoreCase = true) }
         prefs.edit().putStringSet(KEY_SENDERS, HashSet(current)).apply()
         return current
     }
 
     companion object {
         const val FILE_NAME = "paysync_secure_prefs"
+        const val FALLBACK_FILE_NAME = "paysync_prefs_unencrypted"
+        const val KEY_LEGACY_SECRET_HEADER = "send_legacy_secret_header"
         const val KEY_BOT_URL = "bot_api_url"
         const val KEY_SECRET = "webhook_secret"
         const val KEY_SENDERS = "allowed_senders"

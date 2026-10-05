@@ -74,6 +74,7 @@ fun SettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
     val isSaving by vm.isSaving.collectAsStateWithLifecycle()
     val saveConfirmed by vm.saveConfirmed.collectAsStateWithLifecycle()
     val amountFallback by vm.amountFallback.collectAsStateWithLifecycle()
+    val legacySecretHeader by vm.legacySecretHeader.collectAsStateWithLifecycle()
     val maxAutoAmount by vm.maxAutoAmount.collectAsStateWithLifecycle()
     val updateCheckEnabled by vm.updateCheckEnabled.collectAsStateWithLifecycle()
     var secretVisible by remember { mutableStateOf(false) }
@@ -162,6 +163,37 @@ fun SettingsScreen(vm: MainViewModel, modifier: Modifier = Modifier) {
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            stringResource(R.string.legacy_secret_label),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            stringResource(R.string.legacy_secret_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(
+                        checked = legacySecretHeader,
+                        onCheckedChange = { vm.legacySecretHeader.value = it }
+                    )
+                }
+
+                if (!vm.settingsEncrypted) {
+                    Text(
+                        stringResource(R.string.settings_unencrypted_warning),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
 
                 OutlinedTextField(
                     value = pollSeconds,

@@ -28,6 +28,11 @@ The generated code handles REAL money. Implement and verify ALL of these:
       POST body bytes** keyed with `GATEWAY_SECRET`, on every POST → `401` on
       mismatch. `GET` carries no signature. (Exact contract:
       `../BACKEND_API_CONTRACT.md`.)
+- [ ] Verify `X-Gateway-Signature-V2` (sent on GET and POST since v1.2):
+      HMAC-SHA256 of `"v2\n{X-Gateway-Timestamp}\n{METHOD}\n{path?query}\n{Idempotency-Key or empty}\n"`
+      + raw body bytes; reject timestamps older than 5 minutes. Once this
+      works, the merchant can switch OFF the legacy raw-secret header in the
+      app so the secret never travels over the network.
 - [ ] Dedupe on `Idempotency-Key` and finalize each `verify_id` **at most
       once** — never credit the same deposit twice, even across retries.
 - [ ] Keep transaction references UNIQUE: two live deposits must never share
@@ -130,8 +135,8 @@ Server requirements, in order:
 6. `confirmed`: optional sanity check `|amount − expected_amount| ≤ 0.01`;
    mark paid, deliver, `200 {"status":"success"}`.
 7. `timeout`: mark expired, `200 {"status":"success"}`.
-8. Never return accidental `4xx` from bugs here — the app dead-letters
-   (drops) any `4xx` except `429`.
+8. Never return accidental `400`/`404`/`409`/`410`/`422` from bugs here —
+   the app dead-letters (drops) those; every other failure is retried.
 9. Always respond within **25 s**; retries on `429`/`5xx`/network errors are
    safe because of your idempotency layer.
 

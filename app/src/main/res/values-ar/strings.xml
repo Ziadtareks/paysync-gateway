@@ -24,6 +24,7 @@
     <string name="status_confirmed">مؤكد</string>
     <string name="status_timeout">مهلة</string>
     <string name="status_failed">فشل</string>
+    <string name="status_review">تحتاج مراجعة</string>
     <string name="log_ref">مرجع %1$s</string>
     <string name="log_verify">تحقق %1$s</string>
     <string name="poll_now">تحديث الآن</string>
@@ -150,4 +151,14 @@
     <string name="perm_all_required">امنح الأذونات الثلاثة أعلاه للمتابعة</string>
     <string name="perm_granted">تم المنح</string>
     <string name="perm_grant">منح الإذن</string>
+
+    <!-- Security / reliability hardening -->
+    <string name="msg_secret_required">أدخل المفتاح السري — بدونه لا يرسل التطبيق أي توثيق على الإطلاق.</string>
+    <string name="msg_poll_not_configured">لم يتم التحديث: اضبط رابط Bot API أولاً</string>
+    <string name="msg_poll_offline">لم يتم التحديث: الهاتف غير متصل بالإنترنت</string>
+    <string name="legacy_secret_label">إرسال المفتاح السري في الهيدر (الطريقة القديمة)</string>
+    <string name="legacy_secret_hint">يرسل المفتاح نفسه في X-Gateway-Secret. اتركه مفعّلاً فقط حتى يتحقق الخادم من X-Gateway-Signature-V2، ثم أطفئه حتى لا ينتقل المفتاح عبر الشبكة أبدًا.</string>
+    <string name="settings_unencrypted_warning">التخزين الآمن (Android Keystore) غير متاح على هذا الجهاز: الإعدادات محفوظة بدون تشفير. أعد تشغيل الهاتف وأعد إدخال المفتاح السري إذا استمرت المشكلة.</string>
+    <string name="start_failed_title">تعذّر تشغيل البوابة</string>
+    <string name="start_failed_text">رفض أندرويد تشغيل بوابة الدفع في الخلفية. اضغط لفتح PaySync Gateway واستئناف التحقق.</string>
 </resources>

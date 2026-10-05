@@ -171,9 +171,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun hasSmsPermissions(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) ==
-            PackageManager.PERMISSION_GRANTED &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) ==
-                PackageManager.PERMISSION_GRANTED
+            PackageManager.PERMISSION_GRANTED
 
     private fun hasNotifPermission(): Boolean =
         Build.VERSION.SDK_INT < 33 ||
@@ -188,7 +186,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestSmsPermissions() {
-        val needed = mutableListOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
+        val needed = mutableListOf(Manifest.permission.RECEIVE_SMS)
         if (!hasNotifPermission()) needed += Manifest.permission.POST_NOTIFICATIONS
         permissionLauncher.launch(needed.toTypedArray())
     }

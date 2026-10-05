@@ -17,6 +17,10 @@ interface ProcessedSmsDao {
     @Query("SELECT EXISTS(SELECT 1 FROM processed_sms WHERE hash = :hash)")
     suspend fun exists(hash: String): Boolean
 
+    /** Releases a claim whose processing failed, so a redelivery can retry it. */
+    @Query("DELETE FROM processed_sms WHERE hash = :hash")
+    suspend fun deleteByHash(hash: String)
+
     @Query("DELETE FROM processed_sms WHERE receivedAt < :cutoff")
     suspend fun pruneOlderThan(cutoff: Long)
 

@@ -34,8 +34,8 @@ jobs:
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 
-      # Keystore.properties is absent on CI: release falls back to the debug
-      # key (per app/build.gradle.kts) — fine for build verification only.
+      # keystore.properties is absent on CI: the release APK is built
+      # UNSIGNED (per app/build.gradle.kts) — R8/build verification only.
       - name: Assemble release APK (R8)
         run: ./gradlew :app:assembleRelease --stacktrace
 

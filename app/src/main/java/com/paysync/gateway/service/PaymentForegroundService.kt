@@ -18,9 +18,11 @@ import com.paysync.gateway.util.AppLog
 import androidx.core.app.NotificationCompat
 import com.paysync.gateway.PaySyncApp
 import com.paysync.gateway.R
+import com.paysync.gateway.data.GatewayRepository
 import com.paysync.gateway.data.SettingsManager
 import com.paysync.gateway.ui.MainActivity
 import com.paysync.gateway.work.DispatchWorker
+import com.paysync.gateway.work.PollingWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,7 +33,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * 24/7 gateway service (foregroundServiceType="dataSync"):
+ * 24/7 gateway service (foregroundServiceType: specialUse on API 34+,
+ * dataSync on API 29-33):
  *  - Ongoing notification (POST_NOTIFICATIONS requested in UI on Android 13+;
  *    FGS notifications are still delivered without it).
  *  - Polls GET /transactions/pending every [SettingsManager.pollingIntervalMs]
@@ -53,7 +56,11 @@ class PaymentForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
-            shutdown()
+            // Only stop the loop here; onDestroy() releases the scope and the
+            // network callback (cancelling the scope now would leave a dead
+            // instance if a START arrives before the service is destroyed).
+            pollJob?.cancel()
+            pollJob = null
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             SettingsManager.get(this).serviceEnabled = false
@@ -76,7 +83,15 @@ class PaymentForegroundService : Service() {
                     startForeground(NOTIF_ID, notification)
             }
         } catch (e: Exception) {
+            // Running on as a background service would be killed (or crash
+            // with "did not call startForeground") and the Dashboard would
+            // lie. Stop cleanly, keep the user's toggle ON, engage the
+            // WorkManager fallback and tell the user.
             AppLog.e(TAG, "startForeground failed", e)
+            runCatching { PollingWorker.schedule(applicationContext) }
+            runCatching { HealthNotifier.postStartFailedNotification(applicationContext) }
+            stopSelf()
+            return START_NOT_STICKY
         }
         SettingsManager.get(this).serviceHeartbeatMs = System.currentTimeMillis()
         startPollLoop()
@@ -116,17 +131,18 @@ class PaymentForegroundService : Service() {
                 SettingsManager.get(applicationContext).serviceHeartbeatMs =
                     System.currentTimeMillis()
                 try {
-                    container.repo.pollPending()
+                    val result = container.repo.pollPending()
                     val pending = container.db.pendingVerifyDao().liveOnce().size
-                    val queued = container.db.dispatchQueueDao().pendingOnce(1_000).size
+                    val queued = container.db.dispatchQueueDao().countOnce()
+                    val online = result != GatewayRepository.PollResult.OFFLINE
                     // Sequential drain trigger: worker is CONNECTED-constrained,
                     // so this is a no-op offline and a flush online.
-                    if (queued > 0 && container.api.isOnline(applicationContext)) {
+                    if (queued > 0 && online) {
                         DispatchWorker.enqueueDrain(applicationContext)
                     }
-                    val online = container.api.isOnline(applicationContext)
-                    // Health truth: a silent offline poll is still a failure to verify.
-                    if (online && container.settings.isConfigured()) {
+                    // Health truth: only a poll that really reached the backend
+                    // counts; a silent offline poll is still a failure to verify.
+                    if (result == GatewayRepository.PollResult.OK) {
                         HealthNotifier.onPollSuccess(applicationContext)
                     } else {
                         HealthNotifier.onPollFailure(applicationContext)

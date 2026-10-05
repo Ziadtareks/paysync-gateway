@@ -60,7 +60,7 @@ class TransactionParserTest {
 
     @Test
     fun generic_fallsBackAndKeepsRawBody() {
-        val body = "CIB: تم خصم 500.50 جم من حسابكم رقم مرجعي 987654321098"
+        val body = "CIB: تم إضافة 500.50 جم إلى حسابكم رقم مرجعي 987654321098"
         val p = TransactionParser.parse("CIB", body)!!
         assertEquals("generic_bank", p.type)
         assertEquals(500.50, p.amount, 0.0)
@@ -70,7 +70,7 @@ class TransactionParserTest {
 
     @Test
     fun generic_catchesBareLongNumberAsReference() {
-        val body = "BM: رصيدك 75 جم عملية رقم 987654"
+        val body = "BM: تم استلام 75 جم عملية رقم 987654"
         val p = TransactionParser.parse("BM", body)!!
         assertEquals("generic_bank", p.type)
         assertEquals("987654", p.referenceId)
@@ -164,5 +164,62 @@ class TransactionParserTest {
     @Test
     fun blankBody_returnsNull() {
         assertNull(TransactionParser.parse("VF-Cash", "   "))
+    }
+
+    // ── Regression: space after a reference must not glue the next number on ──
+
+    @Test
+    fun normalizeDigits_neverStripsSpaces() {
+        assertEquals(
+            "Transaction ID: 023732288590 2024-10-05",
+            TransactionParser.normalizeDigits("Transaction ID: 023732288590 2024-10-05")
+        )
+        // Thousand separators are stripped only between two digits.
+        assertEquals("1500.00 EGP, ref", TransactionParser.normalizeDigits("1,500.00 EGP, ref"))
+        assertEquals("1500", TransactionParser.normalizeDigits("١٬٥٠٠"))
+    }
+
+    @Test
+    fun vodafone_referenceFollowedByDate_staysIntact() {
+        val body = "You have received 150.00 EGP from 01000000004. " +
+            "Transaction ID: 023732288590 2024-10-05 New balance: 561.92 EGP."
+        val p = TransactionParser.parse("VF-Cash", body)!!
+        assertEquals(150.0, p.amount, 0.0)
+        assertEquals("023732288590", p.referenceId)
+    }
+
+    // ── Regression: outgoing/debit SMS must never be read as a deposit ──
+
+    @Test
+    fun outgoing_vodafoneTransfer_isNotADeposit() {
+        assertNull(
+            TransactionParser.parse(
+                "VF-Cash",
+                "تم تحويل مبلغ 150 جنيه إلى رقم 01000000005 رقم العملية: 023732288591 رصيدك الحالي: 400 جنيه"
+            )
+        )
+        assertNull(TransactionParser.parse("VF-Cash", "You have sent 150.00 EGP to 01000000005. Transaction ID: 023732288591."))
+    }
+
+    @Test
+    fun outgoing_bankDebit_isNotADeposit() {
+        assertNull(TransactionParser.parse("CIB", "CIB: تم خصم 500.50 جم من حسابكم رقم مرجعي 987654321098"))
+        assertNull(TransactionParser.parse("BM", "Your account was debited 75 EGP Ref 1234567890"))
+    }
+
+    // ── Regression: generic parser picks the credit, not the balance / phone ──
+
+    @Test
+    fun generic_skipsBalanceAmount() {
+        val p = TransactionParser.parse("BM", "BM: رصيدك 5000 جم. تم إيداع 150 جم Ref 1234567890")!!
+        assertEquals(150.0, p.amount, 0.0)
+        assertNull(TransactionParser.parse("BM", "BM: رصيدك الحالي 5000 جم"))
+    }
+
+    @Test
+    fun generic_phoneNumberIsNotAReference() {
+        val p = TransactionParser.parse("BM", "BM: تم استلام 150 جم من رقم 01012345678 مرجع 987654321")!!
+        assertEquals("987654321", p.referenceId)
+        assertEquals("01012345678", p.senderPhone)
     }
 }

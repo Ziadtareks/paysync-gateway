@@ -41,10 +41,10 @@ Sideloaded open-source build (MIT) — **not** distributed via Google Play.
    - **Can't grant SMS?** On Android 13+ a twice-denied permission can become
      "restricted": open system **Settings → Apps → PaySync Gateway**, tap the
      **⋮ menu → Allow restricted settings**, then grant it again.
-4. **After updating an existing install, open the app and toggle the gateway
-   OFF then ON (or reboot the phone).** Android stops the 24/7 service during
-   an app update — the toggle may still show "Running" until you do this.
-   (Automatic resume ships in v1.1.1.)
+4. **Updating from v1.1.0 or older:** open the app once after installing and,
+   if the Dashboard does not show "Running", tap **Restart Gateway** (or toggle
+   it OFF then ON). From v1.1.1 on, the gateway resumes by itself after an
+   update.
 5. Review the [Privacy Policy](PRIVACY.md) — what the app reads, where it
    sends data, and how to delete everything.
 
@@ -94,7 +94,7 @@ flowchart LR
 | 🧾 **Smart SMS parsing** | Vodafone Cash / InstaPay-NBE exact regexes + tolerant fallbacks + generic parser for any bank |
 | 🎯 **Two-tier matching** | Exact reference match, then provider + amount tolerance (±0.01 EGP) — **only when exactly one deposit matches**; duplicates of a reference or amount are logged as ambiguous and never auto-confirmed. Race-safe behind a mutex |
 | 🛟 **Safety caps** | Turn amount-fallback matching off (reference-only), and set a max auto-confirm amount — above it, payments are logged for manual review. Optional update check via GitHub (see [PRIVACY.md](PRIVACY.md)) |
-| 📬 **Reliable outbox** | Dispatches persisted in Room; retry `2s → 64s` (max 6); 4xx dead-letters; Idempotency-Key on every POST |
+| 📬 **Reliable outbox** | Dispatches persisted in Room and retried until delivered (fast `2s → 32s`, then background); only `400/404/409/410/422` dead-letter; Idempotency-Key on every POST |
 | 🔐 **Secrets stay secret** | URL/secret/senders in `EncryptedSharedPreferences`, excluded from cloud backups, HMAC-signed dispatches |
 | 📊 **Live dashboard** | Pulsing status card, network + battery truth, pending/queue metrics, live dispatch log |
 

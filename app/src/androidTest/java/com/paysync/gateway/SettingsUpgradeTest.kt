@@ -36,6 +36,7 @@ class SettingsUpgradeTest {
         assertTrue("amount fallback must default ON", s.amountFallbackEnabled)
         assertEquals("max auto-confirm must default disabled", 0.0, s.maxAutoConfirmAmountEgp, 0.0)
         assertTrue("update check default ON (opt-out)", s.updateCheckEnabled)
+        assertTrue("legacy secret header default ON (existing backends)", s.sendLegacySecretHeader)
 
         // Old values survive unchanged.
         assertEquals("https://merchant.example.bot", s.botApiUrl) // trailing / trimmed, as before

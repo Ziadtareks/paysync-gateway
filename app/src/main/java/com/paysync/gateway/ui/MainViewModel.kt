@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.paysync.gateway.AppContainer
 import com.paysync.gateway.R
 import com.paysync.gateway.data.DispatchLog
+import com.paysync.gateway.data.GatewayRepository
 import com.paysync.gateway.util.LocaleHelper
 import com.paysync.gateway.util.NetworkMonitor
 import kotlinx.coroutines.Dispatchers
@@ -130,6 +131,10 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
 
     val botUrl = MutableStateFlow(settings.botApiUrl)
     val secret = MutableStateFlow(settings.webhookSecret)
+    /** Legacy X-Gateway-Secret header (default ON for existing backends). */
+    val legacySecretHeader = MutableStateFlow(settings.sendLegacySecretHeader)
+    /** False when the Keystore failed and settings are stored unencrypted. */
+    val settingsEncrypted: Boolean get() = settings.isEncrypted
     val pollSeconds = MutableStateFlow((settings.pollingIntervalMs / 1000L).toString())
     val providers = MutableStateFlow<List<String>>(settings.getSenders().sorted())
     val newProvider = MutableStateFlow("")
@@ -385,6 +390,12 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             emit(R.string.msg_https_required)
             return
         }
+        // Without a secret the app sends NO authentication at all — any
+        // backend accepting that would let anyone confirm deposits.
+        if (secret.value.isBlank()) {
+            emit(R.string.msg_secret_required)
+            return
+        }
         // Max auto-confirm amount: empty disables, otherwise must parse > 0.
         val maxText = maxAutoAmount.value.trim()
         val maxEgp = when {
@@ -400,12 +411,17 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
             withContext(Dispatchers.IO) {
                 if (url.isNotBlank()) settings.botApiUrl = url
                 settings.webhookSecret = secret.value
+                settings.sendLegacySecretHeader = legacySecretHeader.value
+                // The field only accepts digits; out-of-range values are
+                // clamped to 5..300 s and shown back, never silently dropped.
                 pollSeconds.value.toLongOrNull()?.let { secs ->
-                    if (secs in 5..300) settings.pollingIntervalMs = secs * 1000L
+                    settings.pollingIntervalMs = secs.coerceIn(5L, 300L) * 1000L
                 }
+                pollSeconds.value = (settings.pollingIntervalMs / 1000L).toString()
                 settings.amountFallbackEnabled = amountFallback.value
                 settings.maxAutoConfirmAmountEgp = maxEgp ?: 0.0
                 runCatching { repo.pollPending() }
+                lastPollMs.value = settings.lastPollMs
             }
             isSaving.value = false
             saveConfirmed.value = true
@@ -449,11 +465,14 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             val result = runCatching { repo.pollPending() }
             isPolling.value = false
+            lastPollMs.value = settings.lastPollMs
             result
                 .onSuccess {
-                    settings.lastPollMs = System.currentTimeMillis()
-                    lastPollMs.value = settings.lastPollMs
-                    emit(R.string.msg_polled)
+                    when (it) {
+                        GatewayRepository.PollResult.OK -> emit(R.string.msg_polled)
+                        GatewayRepository.PollResult.NOT_CONFIGURED -> emit(R.string.msg_poll_not_configured)
+                        GatewayRepository.PollResult.OFFLINE -> emit(R.string.msg_poll_offline)
+                    }
                 }
                 .onFailure { emit(R.string.msg_poll_failed, it.message ?: "?") }
         }

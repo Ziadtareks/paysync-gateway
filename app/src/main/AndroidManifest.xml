@@ -2,11 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Network + boot + SMS. Sideloaded open-source build: no Play SMS policy concerns. -->
+    <!-- Network + boot + SMS. Sideloaded open-source build: no Play SMS policy concerns.
+         Only RECEIVE_SMS: incoming PDUs arrive in the broadcast itself; the
+         inbox is never read, so READ_SMS is not requested. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
-    <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- dataSync is the runtime type on API 29-33; specialUse on API 34+. -->

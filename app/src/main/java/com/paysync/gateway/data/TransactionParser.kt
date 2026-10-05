@@ -82,6 +82,10 @@ object TransactionParser {
     fun parse(provider: String, body: String, timestamp: Long = System.currentTimeMillis()): ParsedTransaction? {
         if (body.isBlank()) return null
         val text = normalizeDigits(body)
+        // An outgoing/debit SMS (money LEFT the wallet) must never be read as
+        // a customer deposit — otherwise the merchant's own transfer of the
+        // same amount could auto-confirm someone's pending deposit.
+        if (isOutgoing(text)) return null
         return when {
             isVodafoneHint(provider, text) ->
                 parseVodafone(provider, body, text, timestamp) ?: parseGeneric(provider, body, text, timestamp)
@@ -115,17 +119,67 @@ object TransactionParser {
     }
 
     fun parseGeneric(provider: String, rawBody: String, normalized: String = normalizeDigits(rawBody), timestamp: Long = System.currentTimeMillis()): ParsedTransaction? {
-        val amount = GENERIC_AMOUNT.find(normalized)?.groupValues?.getOrNull(1)?.let(::parseAmount) ?: return null
+        // First amount that is not a balance figure ("رصيدك 5000 جنيه" /
+        // "balance: 5000 EGP"): a balance-only SMS is not a deposit at all.
+        var prevEnd = 0
+        val amount = GENERIC_AMOUNT.findAll(normalized)
+            .filterNot { m ->
+                val isBalance = isBalanceAmount(normalized, prevEnd, m.range.first)
+                prevEnd = m.range.last + 1
+                isBalance
+            }
+            .firstNotNullOfOrNull { it.groupValues.getOrNull(1)?.let(::parseAmount) }
+            ?: return null
         // Labeled reference first, else the longest bare digit run ≥ 6.
+        // Egyptian mobile numbers ("من رقم 01012345678") are the sender's
+        // phone, never a transaction reference.
         val referenceId = GENERIC_REF_LABELED.findAll(normalized)
             .map { it.groupValues[1] }
+            .filterNot(::isEgyptianMobile)
             .maxByOrNull { it.length }
             ?: GENERIC_REF_BARE.findAll(normalized)
                 .map { it.groupValues[1] }
+                .filterNot(::isEgyptianMobile)
                 .maxByOrNull { it.length }
         val senderPhone = GENERIC_EG_PHONE.find(normalized)?.groupValues?.getOrNull(1)
         return ParsedTransaction(provider, "generic_bank", amount, "EGP", senderPhone, null, referenceId, rawBody, timestamp)
     }
+
+    // ---------- Direction / balance guards ----------
+
+    /** Money-in markers (AR/EN). Any of these makes the SMS an incoming credit. */
+    private val INCOMING_MARKERS = Regex(
+        """استلام|استلمت|إضافة|اضافة|إيداع|ايداع|لحسابك|لبطاقتك|لمحفظتك|إليك|اليك|استرداد|received|credited|deposited|incoming|refund""",
+        RegexOption.IGNORE_CASE
+    )
+
+    /** Money-out markers (AR/EN): debits, withdrawals, purchases, transfers TO someone. */
+    private val OUTGOING_MARKERS = Regex(
+        """خصم|سحب|شراء|مشتريات|تم الدفع|دفع مبلغ|إرسال|ارسال|تحويل[^.\n]{0,80}?(?:إلى|الى)\s|""" +
+            """debited|withdraw|purchase|you have sent|you sent|sent to|transferred to|paid to""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val BALANCE_MARKER = Regex("""رصيد|balance""", RegexOption.IGNORE_CASE)
+    private val EG_MOBILE = Regex("""01[0125]\d{8}""")
+
+    /** True for a debit/outgoing SMS with no incoming marker at all. */
+    fun isOutgoing(normalizedBody: String): Boolean =
+        OUTGOING_MARKERS.containsMatchIn(normalizedBody) &&
+            !INCOMING_MARKERS.containsMatchIn(normalizedBody)
+
+    /**
+     * The amount at [amountStart] is labeled as a balance (e.g. "رصيدك الحالي:
+     * 561.92 جنيه"). Only the text since the previous amount ([prevEnd]) and
+     * at most 25 chars back counts, so a balance label never "leaks" onto
+     * the next amount.
+     */
+    private fun isBalanceAmount(text: String, prevEnd: Int, amountStart: Int): Boolean {
+        val windowStart = maxOf(prevEnd, amountStart - 25, 0)
+        return BALANCE_MARKER.containsMatchIn(text.substring(windowStart, amountStart))
+    }
+
+    private fun isEgyptianMobile(digits: String): Boolean = EG_MOBILE.matches(digits)
 
     // ---------- Hints (content markers unique to each rail) ----------
 
@@ -155,25 +209,30 @@ object TransactionParser {
     /**
      * Normalizes Arabic-Indic (٠-٩), Extended Arabic-Indic (۰-۹) and Arabic
      * separators to Western digits BEFORE parsing. Thousand separators
-     * between digits are stripped; the Arabic decimal separator (٫) becomes '.'.
+     * (٬ , ،) are stripped only when a digit sits on BOTH sides ("1,500" →
+     * "1500"); spaces are never stripped, so "ID: 023732288590 2024-10-05"
+     * keeps the reference intact. The Arabic decimal separator (٫) becomes '.'.
      */
     fun normalizeDigits(raw: String): String {
         val sb = StringBuilder(raw.length)
-        for (ch in raw) {
+        for ((i, ch) in raw.withIndex()) {
             when (ch) {
                 in '٠'..'٩' -> sb.append('0' + (ch - '٠'))
                 in '۰'..'۹' -> sb.append('0' + (ch - '۰'))
                 '٫' -> sb.append('.')
-                '٬', ',', '،', ' ' -> {
-                    // Strip thousand separators — but only between digits.
+                '٬', ',', '،' -> {
                     val prevIsDigit = sb.isNotEmpty() && sb.last().isDigit()
-                    if (!prevIsDigit) sb.append(ch)
+                    val nextIsDigit = i + 1 < raw.length && isAnyDigit(raw[i + 1])
+                    if (!(prevIsDigit && nextIsDigit)) sb.append(ch)
                 }
                 else -> sb.append(ch)
             }
         }
         return sb.toString()
     }
+
+    private fun isAnyDigit(ch: Char): Boolean =
+        ch in '0'..'9' || ch in '٠'..'٩' || ch in '۰'..'۹'
 
     fun parseAmount(raw: String): Double? {
         val cleaned = raw.replace(",", "").trim()

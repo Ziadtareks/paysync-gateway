@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.paysync.gateway.PaySyncApp
+import com.paysync.gateway.data.GatewayRepository
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -24,8 +25,9 @@ class PollingWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         val container = (applicationContext as? PaySyncApp)?.container
             ?: return Result.failure()
         val repo = container.repo
+        var reachedBackend = false
         val result = try {
-            repo.pollPending()
+            reachedBackend = repo.pollPending() == GatewayRepository.PollResult.OK
             Result.success()
         } catch (e: IOException) {
             AppLog.w(TAG, "poll failed (io), retrying: ${e.message}")
@@ -46,7 +48,7 @@ class PollingWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 beat, now, settings.pollingIntervalMs
             )
             if (alive) {
-                if (result == Result.success() && settings.isConfigured()) {
+                if (reachedBackend) {
                     com.paysync.gateway.service.HealthNotifier.onPollSuccess(applicationContext)
                 }
             } else {
