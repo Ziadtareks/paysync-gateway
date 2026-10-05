@@ -28,9 +28,10 @@ no server operated by the developer and no account system.
 ## What is stored on the device
 
 - Settings (backend URL, secret, allowed senders, matching options) are stored
-  in **EncryptedSharedPreferences** (if the device's Keystore is broken, the
-  app falls back to a separate unencrypted file and shows a warning in
-  Settings), excluded from all backups and device
+  encrypted with **AES-256-GCM using a key held in the Android Keystore** (the
+  key never leaves secure hardware/software keystore; if the device's
+  Keystore is broken, the app falls back to a separate unencrypted file and
+  shows a warning in Settings), excluded from all backups and device
   transfers.
 - A local Room database: recent captured SMS (last 100), the dispatch outbox,
   a short dispatch log (last 50), and a 7-day dedup ledger of one-way SMS
@@ -105,7 +106,7 @@ Turn it off in Settings → Matching Safety → *Check for updates*. Errors
 ## ما يُخزَّن على الجهاز
 
 - الإعدادات (الرابط، المفتاح السري، المُرسِلون المسموح بهم، خيارات المطابقة)
-  في **EncryptedSharedPreferences** مشفّرة ومستثناة من كل النسخ الاحتياطية
+  مشفّرة بـ **AES-256-GCM بمفتاح محفوظ في Android Keystore** ومستثناة من كل النسخ الاحتياطية
   ونقل البيانات بين الأجهزة.
 - قاعدة بيانات محلية (Room): آخر ١٠٠ رسالة مُحلَّلة، طابور الإرسال، سجل قصير
   (آخر ٥٠ عملية)، وسجل منع تكرار لمدة ٧ أيام يحفظ بصمة SHA-256 لكل رسالة

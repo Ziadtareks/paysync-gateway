@@ -13,8 +13,8 @@ import org.junit.runner.RunWith
  * Phase-6e: settings upgrade. An existing installation's stored URL/secret/
  * senders must keep working after the update, and the NEW settings must
  * default to the historical behavior (amount fallback ON, max amount
- * disabled, update check on). The EncryptedSharedPreferences file and key
- * names are unchanged (R5c) — additive keys only.
+ * disabled, update check on). Key names are unchanged (R5c) — additive keys
+ * only; the legacy file is migrated once (SettingsMigrationTest).
  */
 @RunWith(AndroidJUnit4::class)
 class SettingsUpgradeTest {
@@ -53,9 +53,11 @@ class SettingsUpgradeTest {
 
     @Test
     fun encryptedPrefsFileAndKeyNames_areUnchanged() {
-        // R5c: existing users' stored URL/secret/senders must keep working —
-        // the file name and key names must never be migrated/renamed.
+        // R5c: existing users' stored URL/secret/senders must keep working.
+        // The LEGACY file name is what the one-time migration reads (see
+        // SettingsMigrationTest); key names are carried over unchanged.
         assertEquals("paysync_secure_prefs", SettingsManager.FILE_NAME)
+        assertEquals("paysync_settings_v2", SettingsManager.SECURE_FILE_NAME)
         assertEquals("bot_api_url", SettingsManager.KEY_BOT_URL)
         assertEquals("webhook_secret", SettingsManager.KEY_SECRET)
         assertEquals("allowed_senders", SettingsManager.KEY_SENDERS)

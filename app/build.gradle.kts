@@ -118,7 +118,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
-    // Encrypted settings
+    // LEGACY READ-ONLY: settings are stored with our own Keystore AES-GCM code
+    // (data/security). This deprecated library is used only to read the
+    // pre-v1.2 EncryptedSharedPreferences file once during migration; remove
+    // it in a later release once installs have migrated.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Coroutines

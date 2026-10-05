@@ -52,6 +52,20 @@ without any change.
 - If the foreground service cannot start, the app stops cleanly, engages the
   WorkManager fallback and notifies the user instead of running half-alive.
 
+### Changed — settings storage
+
+- **Settings are now encrypted by the app itself** (AES-256-GCM, key
+  generated in and never leaving the Android Keystore, each value bound to
+  its key name) instead of the deprecated AndroidX `security-crypto`
+  `EncryptedSharedPreferences`.
+- **One-time, crash-safe migration** on the first launch after the update:
+  old settings are copied, re-read and verified, and only then is the old
+  file deleted. Any failure rolls the copy back, keeps the old file, keeps
+  the app running on it, and retries on the next launch. Values saved while
+  a migration was pending are never overwritten by older ones.
+- `security-crypto` remains only as a read-only legacy reader for that
+  migration and will be removed in a later release.
+
 ### Fixed — security & privacy
 
 - New `X-Gateway-Timestamp` + `X-Gateway-Signature-V2` headers sign every

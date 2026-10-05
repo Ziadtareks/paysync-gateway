@@ -2,53 +2,34 @@ package com.paysync.gateway.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
+import com.paysync.gateway.data.security.SettingsStorage
 
 /**
- * Encrypted app settings (AndroidX Security).
+ * Encrypted app settings.
  *
  * Keys: [bot_api_url], [webhook_secret], [allowed_senders], [polling_interval_ms],
  * plus [verify_timeout_ms], [last_heartbeat], [service_enabled].
  *
- * If the Keystore is unavailable (broken OEM keystore, transient failure),
- * the encrypted file is retried once and then left UNTOUCHED: the gateway
- * falls back to a SEPARATE plain file ([FALLBACK_FILE_NAME]) instead of
- * opening the encrypted file as plain prefs (which made every setting
- * unreadable and mixed plaintext secrets into it). [isEncrypted] exposes the
- * degraded state so the UI can warn the user.
+ * Storage is [SettingsStorage]: values AES-256-GCM-encrypted with a key held
+ * in the Android Keystore ([SECURE_FILE_NAME]). On the first launch after the
+ * update, settings saved by older versions in the AndroidX
+ * EncryptedSharedPreferences file ([FILE_NAME]) are migrated once — copied,
+ * verified, and only then is the old file deleted; any failure rolls back
+ * and keeps the old file. If the Keystore is unusable, a separate PLAIN
+ * fallback file ([FALLBACK_FILE_NAME]) is used and [isEncrypted] is false so
+ * the UI can warn the user.
  */
 class SettingsManager private constructor(context: Context) {
 
+    private val opened = SettingsStorage.open(context.applicationContext)
+
     /** False when the Keystore failed and settings live in the plain fallback file. */
-    val isEncrypted: Boolean
+    val isEncrypted: Boolean = opened.encrypted
 
-    private val prefs: SharedPreferences
+    /** Outcome of the one-time legacy settings migration for this launch. */
+    val migration: SettingsStorage.Migration = opened.migration
 
-    init {
-        val appContext = context.applicationContext
-        val encrypted = openEncrypted(appContext) ?: openEncrypted(appContext)
-        isEncrypted = encrypted != null
-        prefs = encrypted ?: run {
-            com.paysync.gateway.util.AppLog.w("SettingsManager", "Keystore unavailable — using unencrypted fallback settings")
-            appContext.getSharedPreferences(FALLBACK_FILE_NAME, Context.MODE_PRIVATE)
-        }
-    }
-
-    private fun openEncrypted(appContext: Context): SharedPreferences? = try {
-        @Suppress("DEPRECATION")
-        EncryptedSharedPreferences.create(
-            appContext,
-            FILE_NAME,
-            MasterKey.Builder(appContext)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build(),
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    } catch (_: Exception) {
-        null
-    }
+    private val prefs: SharedPreferences = opened.prefs
 
     var botApiUrl: String
         get() = prefs.getString(KEY_BOT_URL, DEFAULT_BOT_URL) ?: DEFAULT_BOT_URL
@@ -169,9 +150,8 @@ class SettingsManager private constructor(context: Context) {
     }
 
     /**
-     * Replaces the whole allowed-sender set in ONE write. Successive
-     * per-item writes are less reliable with EncryptedSharedPreferences
-     * StringSet caching, so bulk changes (and tests) should prefer this.
+     * Replaces the whole allowed-sender set in ONE write (one encryption,
+     * one disk write), so bulk changes (and tests) should prefer this.
      */
     fun setSenders(senders: Collection<String>): Set<String> {
         val clean = senders.map { it.trim() }.filter { it.isNotEmpty() }
@@ -187,7 +167,10 @@ class SettingsManager private constructor(context: Context) {
     }
 
     companion object {
+        /** LEGACY EncryptedSharedPreferences file (≤ v1.1.1): read once for migration, then deleted. */
         const val FILE_NAME = "paysync_secure_prefs"
+        /** Current Keystore AES-GCM settings file. */
+        const val SECURE_FILE_NAME = "paysync_settings_v2"
         const val FALLBACK_FILE_NAME = "paysync_prefs_unencrypted"
         const val KEY_LEGACY_SECRET_HEADER = "send_legacy_secret_header"
         const val KEY_BOT_URL = "bot_api_url"
