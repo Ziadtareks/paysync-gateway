@@ -13,21 +13,20 @@ interface DispatchQueueDao {
     @Query("SELECT * FROM dispatch_queue WHERE id = :id")
     suspend fun getById(id: Long): DispatchQueueItem?
 
-    /** Only rows still eligible for retry (attempts < 6). */
-    @Query("SELECT * FROM dispatch_queue WHERE attempts < 6 ORDER BY createdAt ASC LIMIT :limit")
+    /**
+     * Every queued row is due: rows are never parked by attempt count — a
+     * retryable failure keeps the row until it is delivered (or the server
+     * permanently rejects it). [DispatchQueueItem.attempts] is informational.
+     */
+    @Query("SELECT * FROM dispatch_queue ORDER BY id ASC LIMIT :limit")
     suspend fun dueOnce(limit: Int = 20): List<DispatchQueueItem>
 
-    /**
-     * Offline-queue view: every row present here with attempts < 6 is PENDING
-     * (waiting for CONNECTED drain). [DispatchQueueItem.status] carries the
-     * outcome (confirmed/timeout); [DispatchQueueItem.attempts] defaults to 0
-     * at enqueue time per the offline-queue contract.
-     */
-    @Query("SELECT * FROM dispatch_queue WHERE attempts < 6 ORDER BY createdAt ASC LIMIT :limit")
-    suspend fun pendingOnce(limit: Int = 20): List<DispatchQueueItem>
+    /** Keyset pagination for one drain pass: rows with id > [afterId], oldest first. */
+    @Query("SELECT * FROM dispatch_queue WHERE id > :afterId ORDER BY id ASC LIMIT :limit")
+    suspend fun dueAfter(afterId: Long, limit: Int = 20): List<DispatchQueueItem>
 
     /** Crash-recovery guard: never enqueue a timeout if a row already exists. */
-    @Query("SELECT COUNT(*) FROM dispatch_queue WHERE verifyId = :verifyId AND attempts < 6")
+    @Query("SELECT COUNT(*) FROM dispatch_queue WHERE verifyId = :verifyId")
     suspend fun countForVerify(verifyId: String): Int
 
     @Query("DELETE FROM dispatch_queue WHERE id = :id")
@@ -36,6 +35,9 @@ interface DispatchQueueDao {
     @Query("UPDATE dispatch_queue SET attempts = attempts + 1, lastError = :error WHERE id = :id")
     suspend fun bumpAttempt(id: Long, error: String?)
 
-    @Query("SELECT COUNT(*) FROM dispatch_queue WHERE attempts < 6")
+    @Query("SELECT COUNT(*) FROM dispatch_queue")
+    suspend fun countOnce(): Int
+
+    @Query("SELECT COUNT(*) FROM dispatch_queue")
     fun countFlow(): Flow<Int>
 }

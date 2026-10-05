@@ -22,27 +22,32 @@ When a secret is configured, the app attaches it to **every** request:
 
 | Header | Present on | Meaning |
 |---|---|---|
-| `X-Gateway-Secret` | `GET` + `POST` | The raw shared secret. Reject with `401` if it does not match. |
-| `X-Gateway-Signature` | `POST` only | Lowercase-hex HMAC-SHA256 of the **raw POST JSON body bytes** (UTF-8), keyed with the shared secret. Verify and reject mismatches with `401`. `GET` requests carry no signature (no body to sign). |
+| `X-Gateway-Timestamp` | `GET` + `POST` | Unix time in **seconds** when the request was signed. *(since v1.2)* |
+| `X-Gateway-Signature-V2` | `GET` + `POST` | Lowercase-hex HMAC-SHA256, keyed with the shared secret, over the UTF-8 string `"v2\n{X-Gateway-Timestamp}\n{METHOD}\n{path}\n{Idempotency-Key}\n"` followed by the raw body bytes (empty for `GET`). `{path}` is the encoded request path plus `?query` if any (e.g. `/transactions/pending`); `{Idempotency-Key}` is empty on `GET`. Verify it and reject requests whose timestamp is more than **5 minutes** away from your clock. *(since v1.2)* |
+| `X-Gateway-Signature` | `POST` only | Legacy: lowercase-hex HMAC-SHA256 of the **raw POST JSON body bytes** (UTF-8), keyed with the shared secret. Still sent for existing backends. |
+| `X-Gateway-Secret` | `GET` + `POST` | Legacy: the raw shared secret. Sent only while **Settings → "Send raw secret header (legacy)"** is ON (the default, so existing backends keep working). |
 | `Idempotency-Key` | `POST` only | UUID minted once per dispatch at match time. **You must dedupe on it**: a retried POST with a seen key must return the original result without executing twice. |
 
-If no secret is configured in the app, these headers are absent — in
-production always require the secret.
+The app refuses to save a configuration without a secret. **Recommended:**
+verify `X-Gateway-Signature-V2` (+ timestamp window) on every request, then
+switch the legacy raw-secret header OFF in the app — the secret then never
+travels over the network, and captured requests stop being replayable after
+5 minutes. Backends that only check `X-Gateway-Secret` /
+`X-Gateway-Signature` keep working unchanged while the legacy header is ON.
 
 ## Replay protection (server-side responsibility)
 
-The app does **not** send a timestamp header and the signature covers **only
-the raw body** — by design. Changing that (e.g. adding `X-Gateway-Timestamp`
-inside the signed material) would break every backend that already verifies
-`X-Gateway-Signature` over the body alone, so the wire format stays as
-documented above.
-
-Replay resistance therefore comes from the **`Idempotency-Key`**: it is a UUID
+The legacy `X-Gateway-Signature` covers **only the raw body**, so a captured
+legacy request can be replayed. `X-Gateway-Signature-V2` additionally covers
+the timestamp, method, path and `Idempotency-Key` — enforce the 5-minute
+timestamp window to bound replays. Either way, keep the
+**`Idempotency-Key`** checks below: it is a UUID
 minted once per dispatch at match time and never reused. Servers MUST enforce
 its uniqueness:
 
-- Store every `Idempotency-Key` you have processed (a 7-day retention is more
-  than enough — the app retries for at most ~2 minutes).
+- Store every `Idempotency-Key` you have processed (a 7-day retention is
+  recommended — the app keeps retrying a failed dispatch until your server
+  accepts it, e.g. through a long outage).
 - A retried POST with a seen key must return the original result **without
   executing again** (this also makes the app's exponential-backoff retries
   safe).
@@ -159,9 +164,8 @@ The app treats responses as follows — implement accordingly:
 | Your response | App behavior |
 |---|---|
 | `2xx` | Success. The dispatch is deleted from the app queue. |
-| `404` (e.g. unknown `verify_id`) | Dead-letter: dropped immediately, **never retried**. Use this for permanently unprocessable dispatches. |
-| Any other `4xx` except `429` (e.g. `400`, `401`) | Dead-letter: dropped immediately, **never retried**. Note this means an auth failure loses that dispatch — fix the secret configuration instead of relying on retries. |
-| `429` or `5xx`, or no response / timeout | Retried with exponential backoff (**2s → 64s, max 6 attempts**). Your `Idempotency-Key` dedupe makes these safe. |
+| `400`, `404` (e.g. unknown `verify_id`), `409`, `410`, `422` | Dead-letter: dropped immediately, **never retried**. Use these only for permanently unprocessable dispatches. |
+| Anything else: `401`/`403`, other `4xx`, `429`, `5xx`, no response / timeout | **Kept and retried until it succeeds**: 6 quick tries (2s → 32s backoff), then WorkManager retries in the background (every 30 s, growing, plus a 15-minute safety-net drain). A wrong secret or a server outage therefore never loses a confirmed payment — fix the problem and the queue delivers. Your `Idempotency-Key` dedupe makes these retries safe. |
 
 ## How matching works (context for backend developers)
 
@@ -171,7 +175,10 @@ You only need the 2 endpoints above, but this explains what the fields do:
 2. The app fetches it and waits for a wallet SMS on the device.
 3. On SMS arrival the app parses amount / reference and matches:
    - **Priority 1:** exact `reference_id` match against your
-     `reference_id_hint` (when you supply one).
+     `reference_id_hint` (when you supply one) **and** the SMS amount within
+     ±0.01 EGP of `expected_amount`. A matching reference with a different
+     amount is never confirmed — it is logged for manual review and the
+     deposit follows its timeout.
    - **Priority 2:** `provider` matches **and** the amounts agree within
      **±0.01 EGP**.
    - **Ambiguity guard:** if two or more live deposits share the same
@@ -179,18 +186,27 @@ You only need the 2 endpoints above, but this explains what the fields do:
      the app confirms **nothing** and logs the SMS as ambiguous for manual
      review. Always send a `reference_id_hint` when your flow knows the
      transaction reference — it is the only unambiguous key.
+   - Outgoing / debit SMS ("تم تحويل … إلى", "تم خصم", "You have sent", …)
+     are never treated as deposits.
+   - **Late matching:** if the SMS arrived *before* the deposit reached the
+     phone (poll lag, or the customer paid first), the app re-checks
+     unmatched SMS against newly fetched deposits: by amount only for SMS
+     younger than one poll interval + 60 s, by exact reference (+ amount) for
+     SMS up to 15 minutes old. Another reason to send `reference_id_hint`.
 4. On match the app POSTs `confirmed` (with the `Idempotency-Key` minted at
    match time). If the per-request `timeout_ms` (or the 120 s app default)
-   elapses with no match, the app POSTs `timeout`.
+   elapses with no match, the app POSTs `timeout`. Each `verify_id` gets at
+   most one of the two; the app remembers finalized ids for 24 h after
+   their timeout so a deposit you still list is not picked up again.
 
 ## Implementation checklist
 
 - [ ] `GET /transactions/pending` returns `200` + bare JSON array (empty array when idle).
-- [ ] `POST /transactions/dispatch` checks `X-Gateway-Secret` (`401` on mismatch).
-- [ ] `POST /transactions/dispatch` verifies `X-Gateway-Signature` HMAC (`401` on mismatch).
+- [ ] Both endpoints verify `X-Gateway-Signature-V2` + the 5-minute `X-Gateway-Timestamp` window (`401` on mismatch) — or, for legacy backends, `X-Gateway-Secret` / `X-Gateway-Signature`.
 - [ ] `POST /transactions/dispatch` dedupes on `Idempotency-Key` (no double execution).
 - [ ] `verify_id` is finalized at most once (no double credit on retries).
 - [ ] Unknown `verify_id` returns `404` (so the app stops retrying it).
+- [ ] Credit based on **your** stored `expected_amount`; treat the dispatch `amount` as informational and reject a mismatch beyond ±0.01 EGP.
 - [ ] Success returns `2xx` with `{"status": "success"}`.
 - [ ] Responses arrive within 25 seconds.
 - [ ] Secret is stored server-side from your own config — never hardcoded in client-facing code.

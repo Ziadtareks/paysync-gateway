@@ -34,7 +34,7 @@ class SmsReceiver : BroadcastReceiver() {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
         // goAsync() is only non-null for real system broadcasts; the null case
         // exists for direct invocation in instrumented tests.
-        val pendingResult = goAsync()
+        val pendingResult: PendingResult? = goAsync()
         Scope.launch {
             try {
                 handleSms(context.applicationContext, intent)
@@ -89,11 +89,19 @@ class SmsReceiver : BroadcastReceiver() {
                 null
             }
             if (parsed == null) {
-                AppLog.w(TAG, "Unparseable SMS from $provider (len=${fullBody.length})")
+                AppLog.w(TAG, "Unparseable or outgoing SMS from $provider (len=${fullBody.length})")
                 continue
             }
             AppLog.i(TAG, "Parsed ${parsed.type} ${parsed.amount} ref=${parsed.referenceId}")
-            container.repo.onSmsParsed(provider, parsed)
+            try {
+                container.repo.onSmsParsed(provider, parsed)
+            } catch (e: Exception) {
+                // Processing failed AFTER the dedup claim: release it, or this
+                // payment SMS would be marked "seen" forever without ever
+                // having been stored or matched.
+                runCatching { container.db.processedSmsDao().deleteByHash(hash) }
+                AppLog.e(TAG, "Processing failed for $provider; dedup claim released", e)
+            }
         }
     }
 

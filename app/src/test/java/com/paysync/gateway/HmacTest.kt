@@ -107,4 +107,100 @@ class HmacTest {
         assertNull(recorded.getHeader("X-Gateway-Signature"))
         assertNotNull(recorded.body)
     }
+
+    // ── V2 signature: timestamp + method + path + idempotency key + body ──
+
+    @Test
+    fun v2_postSignatureCoversTimestampMethodPathKeyAndBody() {
+        server.enqueue(MockResponse().setBody("""{"status":"success"}"""))
+        val secret = "unit-test-secret"
+        val json = """{"verify_id":"v1","status":"timeout"}"""
+        val client = OkHttpClient.Builder()
+            .addInterceptor(
+                ApiClient.HmacInterceptor(
+                    legacySecretHeader = { false },
+                    clock = { 1_700_000_000_123L }
+                ) { secret }
+            )
+            .build()
+        client.newCall(
+            Request.Builder()
+                .url(server.url("/transactions/dispatch"))
+                .post(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
+                .header("Idempotency-Key", "key-1")
+                .build()
+        ).execute().use { assertEquals(200, it.code) }
+
+        val recorded = server.takeRequest()
+        val body = recorded.body.readByteArray()
+        assertEquals("1700000000", recorded.getHeader("X-Gateway-Timestamp"))
+        val expected = HmacSha256.hex(
+            secret,
+            ApiClient.v2SigningPrefix("1700000000", "POST", "/transactions/dispatch", "key-1")
+                .toByteArray(Charsets.UTF_8) + body
+        )
+        assertEquals(expected, recorded.getHeader("X-Gateway-Signature-V2"))
+        // Legacy body signature still present; raw secret NOT sent when legacy header is off.
+        assertEquals(HmacSha256.hex(secret, body), recorded.getHeader("X-Gateway-Signature"))
+        assertNull(recorded.getHeader("X-Gateway-Secret"))
+    }
+
+    @Test
+    fun v2_getIsSignedToo() {
+        server.enqueue(MockResponse().setBody("[]"))
+        val client = OkHttpClient.Builder()
+            .addInterceptor(ApiClient.HmacInterceptor(legacySecretHeader = { false }, clock = { 5_000L }) { "s3cret" })
+            .build()
+        client.newCall(Request.Builder().url(server.url("/transactions/pending")).get().build())
+            .execute().use { assertEquals(200, it.code) }
+        val recorded = server.takeRequest()
+        assertEquals("5", recorded.getHeader("X-Gateway-Timestamp"))
+        assertEquals(
+            HmacSha256.hex("s3cret", ApiClient.v2SigningPrefix("5", "GET", "/transactions/pending", null)),
+            recorded.getHeader("X-Gateway-Signature-V2")
+        )
+        assertNull(recorded.getHeader("X-Gateway-Secret"))
+    }
+
+    // ── Dead-letter policy: only "permanently unprocessable" codes drop a dispatch ──
+
+    @Test
+    fun retryPolicy_keepsAuthAndServerErrors_dropsOnlyPermanentRejections() {
+        for (code in listOf(-1, 401, 403, 408, 429, 500, 503)) {
+            assertEquals("code $code", true, ApiClient.HttpResult(false, code).retryable)
+        }
+        for (code in listOf(400, 404, 409, 410, 422)) {
+            assertEquals("code $code", false, ApiClient.HttpResult(false, code).retryable)
+        }
+        assertEquals(false, ApiClient.HttpResult(true, 200).retryable)
+    }
+
+    // ── Pending list: malformed items are skipped, never crash the poll ──
+
+    @Test
+    fun pendingList_skipsMalformedItemsKeepsValidOnes() {
+        val body = """[
+            {"verify_id":"ok1","expected_amount":50.0,"provider":"VF-Cash","reference_id_hint":""},
+            {"verify_id":null,"expected_amount":50.0,"provider":"VF-Cash"},
+            {"expected_amount":50.0,"provider":"VF-Cash"},
+            {"verify_id":"noProvider","expected_amount":50.0},
+            {"verify_id":"noAmount","provider":"VF-Cash"},
+            {"verify_id":"badAmount","expected_amount":"abc","provider":"VF-Cash"},
+            "not-an-object",
+            {"verify_id":"ok2","expected_amount":"75.5","provider":"CIB","reference_id_hint":"123456","timeout_ms":60000}
+        ]"""
+        val list = com.paysync.gateway.data.PendingListParser.parse(body)
+        assertEquals(listOf("ok1", "ok2"), list.map { it.verifyId })
+        assertNull(list[0].referenceIdHint)
+        assertEquals(75.5, list[1].expectedAmount, 0.0)
+        assertEquals(60_000L, list[1].timeoutMs)
+    }
+
+    @Test
+    fun pendingList_wrappedObjectAndEmpty() {
+        val p = com.paysync.gateway.data.PendingListParser
+        assertEquals(1, p.parse("""{"data":[{"verify_id":"a","expected_amount":1,"provider":"x"}]}""").size)
+        assertEquals(0, p.parse("""{"data":"nope"}""").size)
+        assertEquals(0, p.parse("   ").size)
+    }
 }

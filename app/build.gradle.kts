@@ -7,8 +7,9 @@ plugins {
 }
 
 // Release signing lives in keystore.properties (gitignored) + a keystore file
-// at the repo root. Fresh clones without them still build — release falls
-// back to the debug key so CI and contributors never break.
+// at the repo root. Fresh clones without them still build, but the release
+// APK is left UNSIGNED (app-release-unsigned.apk) — never silently signed
+// with the public debug key, which anyone could use to forge an "update".
 val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { load(it) }
@@ -24,9 +25,9 @@ android {
         applicationId = "com.paysync.gateway"
         minSdk = 26
         targetSdk = 34
-        // 3 / 1.1.1: service-resume fix above the published v1.1.0 (versionCode 2).
-        versionCode = 3
-        versionName = "1.1.1"
+        // 4 / 1.2.0: payment-safety + Keystore settings release above v1.1.1 (versionCode 3).
+        versionCode = 4
+        versionName = "1.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -54,10 +55,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = if (hasReleaseSigning) {
-                signingConfigs.getByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                logger.warn("keystore.properties missing: release APK will be UNSIGNED")
             }
         }
     }
@@ -105,7 +106,7 @@ dependencies {
     // Core + Compose UI (Material3)
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
-    // مكتبة الماتيريال ديزاين (عشان نحل إيرور الثيم)
+    // Material Components: provides the XML Theme.Material3 parent used by themes.xml
     implementation("com.google.android.material:material:1.12.0")
 
     implementation("androidx.activity:activity-compose:1.9.0")
@@ -117,7 +118,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
-    // Encrypted settings
+    // LEGACY READ-ONLY: settings are stored with our own Keystore AES-GCM code
+    // (data/security). This deprecated library is used only to read the
+    // pre-v1.2 EncryptedSharedPreferences file once during migration; remove
+    // it in a later release once installs have migrated.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Coroutines
@@ -128,7 +132,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.11.0")
 
-    // Persistence: Room (استخدمنا kapt بدلاً من ksp عشان نحل إيرور الجافا)
+    // Persistence: Room (annotation processing via kapt)
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")

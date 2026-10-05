@@ -28,6 +28,11 @@ The generated code handles REAL money. Implement and verify ALL of these:
       POST body bytes** keyed with `GATEWAY_SECRET`, on every POST → `401` on
       mismatch. `GET` carries no signature. (Exact contract:
       `../BACKEND_API_CONTRACT.md`.)
+- [ ] Verify `X-Gateway-Signature-V2` (sent on GET and POST since v1.2):
+      HMAC-SHA256 of `"v2\n{X-Gateway-Timestamp}\n{METHOD}\n{path?query}\n{Idempotency-Key or empty}\n"`
+      + raw body bytes; reject timestamps older than 5 minutes. Once this
+      works, the merchant can switch OFF the legacy raw-secret header in the
+      app so the secret never travels over the network.
 - [ ] Dedupe on `Idempotency-Key` and finalize each `verify_id` **at most
       once** — never credit the same deposit twice, even across retries.
 - [ ] Keep transaction references UNIQUE: two live deposits must never share
@@ -134,10 +139,11 @@ Server requirements, in order:
 6. `confirmed`: optional sanity check `|amount − expected_amount| ≤ 0.01`;
    then credit/deliver, mark finalized, return `200 {"status":"success"}`.
 7. `timeout`: mark expired (release the order), return `200 {"status":"success"}`.
-8. Any other `4xx` you return (except `429`) makes the app drop the dispatch
+8. A `400`/`404`/`409`/`410`/`422` makes the app drop the dispatch
    permanently — return `404`/`200` deliberately, never accidental `400`s.
-9. Respond within **25 seconds**; the app retries `429`/`5xx`/network errors
-   with exponential backoff (your idempotency makes that safe).
+9. Respond within **25 seconds**; the app keeps retrying every other failure
+   (`401`/`403`, `429`, `5xx`, network errors) with backoff until it
+   succeeds (your idempotency makes that safe).
 
 ## Deliverables
 

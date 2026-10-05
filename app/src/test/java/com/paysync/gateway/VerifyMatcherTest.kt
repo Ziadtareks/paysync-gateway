@@ -36,13 +36,27 @@ class VerifyMatcherTest {
     @Test
     fun priority1_exactReferenceWins() {
         val list = listOf(
-            pending("v1", 999.0, "VF-Cash", "023650505952"),
+            pending("v1", 150.0, "VF-Cash", "023650505952"),
             pending("v2", 150.0, "VF-Cash", "000000000000")
         )
         val hit = VerifyMatcher.findMatch(
             parsed(150.0, "VF-Cash", "023650505952"), list, now = 1_050_000L
         )
         assertMatchOf(hit, "v1")
+    }
+
+    @Test
+    fun priority1_referenceWithWrongAmount_isNeverConfirmed() {
+        // Customer supplies the reference of a 1 EGP transfer for a 999 EGP deposit.
+        val list = listOf(pending("v1", 999.0, "VF-Cash", "023650505952"))
+        val hit = VerifyMatcher.findMatch(
+            parsed(1.0, "VF-Cash", "023650505952"), list, now = 1_050_000L
+        )
+        assertTrue("expected AmountMismatch, got $hit", hit is MatchResult.AmountMismatch)
+        hit as MatchResult.AmountMismatch
+        assertEquals("v1", hit.verify.verifyId)
+        assertEquals(999.0, hit.expected, 0.0)
+        assertEquals(1.0, hit.received, 0.0)
     }
 
     @Test
@@ -134,13 +148,24 @@ class VerifyMatcherTest {
     @Test
     fun referenceBeatsAmount_evenWhenAmountAlsoMatches() {
         val list = listOf(
-            pending("byRef", 999.0, "VF-Cash", "023650505952"),
+            pending("byRef", 150.0, "VF-Cash", "023650505952"),
             pending("byAmount", 150.0, "VF-Cash")
         )
+        // Amount alone would be ambiguous (2 candidates); the reference decides.
         assertMatchOf(
             VerifyMatcher.findMatch(parsed(150.0, "VF-Cash", "023650505952"), list, now = 1_050_000L),
             "byRef"
         )
+    }
+
+    @Test
+    fun referenceAmountMismatch_neverFallsBackToAnotherDeposit() {
+        val list = listOf(
+            pending("byRef", 999.0, "VF-Cash", "023650505952"),
+            pending("byAmount", 150.0, "VF-Cash")
+        )
+        val hit = VerifyMatcher.findMatch(parsed(150.0, "VF-Cash", "023650505952"), list, now = 1_050_000L)
+        assertTrue("expected AmountMismatch, got $hit", hit is MatchResult.AmountMismatch)
     }
 
     @Test
@@ -170,7 +195,7 @@ class VerifyMatcherTest {
         val list = listOf(pending("v1", 200.0, "BanK-AlAhly", "501087662186"))
         assertMatchOf(
             VerifyMatcher.findMatch(
-                parsed(999.0, "BanK-AlAhly", "501087662186"), list, now = 1_050_000L,
+                parsed(200.0, "BanK-AlAhly", "501087662186"), list, now = 1_050_000L,
                 allowAmountFallback = false
             ), "v1"
         )

@@ -17,17 +17,21 @@ no server operated by the developer and no account system.
 
 ## Where data is sent
 
-- Matched payment details (amount, provider label, transaction reference, the
-  raw SMS text of **allowed senders only**) are sent **exclusively to the
-  backend URL you enter in Settings** — your own server. The developer never
-  receives a copy.
-- Requests to your backend are authenticated with the secret you configure
-  and signed with HMAC-SHA256.
+- Matched payment details (verify id, status, amount, provider label,
+  transaction reference — never the raw SMS text) are sent **exclusively to
+  the backend URL you enter in Settings** — your own server. The developer
+  never receives a copy.
+- Requests to your backend are signed with HMAC-SHA256 using the secret you
+  configure (the raw secret header can be switched off in Settings once your
+  backend verifies the V2 signature).
 
 ## What is stored on the device
 
 - Settings (backend URL, secret, allowed senders, matching options) are stored
-  in **EncryptedSharedPreferences**, excluded from all backups and device
+  encrypted with **AES-256-GCM using a key held in the Android Keystore** (the
+  key never leaves secure hardware/software keystore; if the device's
+  Keystore is broken, the app falls back to a separate unencrypted file and
+  shows a warning in Settings), excluded from all backups and device
   transfers.
 - A local Room database: recent captured SMS (last 100), the dispatch outbox,
   a short dispatch log (last 50), and a 7-day dedup ledger of one-way SMS
@@ -65,7 +69,7 @@ Turn it off in Settings → Matching Safety → *Check for updates*. Errors
 
 | Permission | Why |
 |---|---|
-| `RECEIVE_SMS` / `READ_SMS` | Read incoming wallet SMS from your allow-listed senders |
+| `RECEIVE_SMS` | Receive incoming wallet SMS from your allow-listed senders (the inbox itself is never read) |
 | `INTERNET` / `ACCESS_NETWORK_STATE` | Talk to your backend and know when you are offline |
 | `FOREGROUND_SERVICE*` | Keep the 24/7 verification service alive |
 | `RECEIVE_BOOT_COMPLETED` | Restart the gateway after a reboot |
@@ -93,15 +97,16 @@ Turn it off in Settings → Matching Safety → *Check for updates*. Errors
 
 ## إلى أين تُرسل البيانات
 
-- تفاصيل المدفوعات المتطابقة (المبلغ، اسم المزود، رقم المرجع، ونص الرسالة
-  الأصلي **للمُرسِلين المسموح بهم فقط**) تُرسل **حصريًا إلى رابط الـ Backend
+- تفاصيل المدفوعات المتطابقة (معرّف الطلب، الحالة، المبلغ، اسم المزود، رقم
+  المرجع — وليس نص الرسالة الأصلي أبدًا) تُرسل **حصريًا إلى رابط الـ Backend
   الذي تكتبه في الإعدادات** — سيرفرك أنت. المطوّر لا يستلم نسخة أبدًا.
-- الطلبات إلى سيرفرك تُصادق بمفتاحك السري وتُوقَّع بـ HMAC-SHA256.
+- الطلبات إلى سيرفرك تُوقَّع بـ HMAC-SHA256 بمفتاحك السري (ويمكن إيقاف إرسال
+  المفتاح نفسه في الهيدر من الإعدادات بعد أن يدعم سيرفرك توقيع V2).
 
 ## ما يُخزَّن على الجهاز
 
 - الإعدادات (الرابط، المفتاح السري، المُرسِلون المسموح بهم، خيارات المطابقة)
-  في **EncryptedSharedPreferences** مشفّرة ومستثناة من كل النسخ الاحتياطية
+  مشفّرة بـ **AES-256-GCM بمفتاح محفوظ في Android Keystore** ومستثناة من كل النسخ الاحتياطية
   ونقل البيانات بين الأجهزة.
 - قاعدة بيانات محلية (Room): آخر ١٠٠ رسالة مُحلَّلة، طابور الإرسال، سجل قصير
   (آخر ٥٠ عملية)، وسجل منع تكرار لمدة ٧ أيام يحفظ بصمة SHA-256 لكل رسالة
@@ -138,7 +143,7 @@ Turn it off in Settings → Matching Safety → *Check for updates*. Errors
 
 | الإذن | السبب |
 |---|---|
-| `RECEIVE_SMS` / `READ_SMS` | قراءة رسائل المحافظ الواردة من مُرسِليك المسموح بهم |
+| `RECEIVE_SMS` | استقبال رسائل المحافظ الواردة من مُرسِليك المسموح بهم (لا يقرأ التطبيق صندوق الرسائل نفسه) |
 | `INTERNET` / `ACCESS_NETWORK_STATE` | التواصل مع سيرفرك ومعرفة حالة الاتصال |
 | `FOREGROUND_SERVICE*` | إبقاء خدمة التحقق ٢٤/٧ حيّة |
 | `RECEIVE_BOOT_COMPLETED` | إعادة تشغيل البوابة بعد إعادة تشغيل الهاتف |

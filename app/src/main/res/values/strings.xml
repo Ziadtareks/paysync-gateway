@@ -24,6 +24,7 @@
     <string name="status_confirmed">Confirmed</string>
     <string name="status_timeout">Timeout</string>
     <string name="status_failed">Failed</string>
+    <string name="status_review">Needs review</string>
     <string name="log_ref">ref %1$s</string>
     <string name="log_verify">verify %1$s</string>
     <string name="poll_now">Poll now</string>
@@ -151,4 +152,14 @@
     <string name="perm_all_required">Grant all three permissions above to continue</string>
     <string name="perm_granted">Granted</string>
     <string name="perm_grant">Grant Permission</string>
+
+    <!-- Security / reliability hardening -->
+    <string name="msg_secret_required">Enter the webhook secret — without it the app sends no authentication at all.</string>
+    <string name="msg_poll_not_configured">Not polled: set your Bot API URL first</string>
+    <string name="msg_poll_offline">Not polled: the phone is offline</string>
+    <string name="legacy_secret_label">Send raw secret header (legacy)</string>
+    <string name="legacy_secret_hint">Also sends the secret itself as X-Gateway-Secret. Keep ON only until your backend verifies X-Gateway-Signature-V2, then turn OFF so the secret never travels over the network.</string>
+    <string name="settings_unencrypted_warning">Secure storage (Android Keystore) is unavailable on this device: settings are stored unencrypted. Restart the phone and re-enter the secret if this persists.</string>
+    <string name="start_failed_title">Gateway could not start</string>
+    <string name="start_failed_text">Android refused to start the payment gateway in the background. Tap to open PaySync Gateway and resume verification.</string>
 </resources>

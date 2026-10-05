@@ -11,8 +11,11 @@ import kotlin.math.abs
  *
  * Priority 1 — reference match: exact equality after digit normalization
  *   (Arabic-Indic/Persian → Western, whitespace/punctuation stripped).
- *   Confirms only when EXACTLY ONE live request carries that reference;
- *   2+ duplicates are reported [MatchResult.Ambiguous] and never confirmed.
+ *   Confirms only when EXACTLY ONE live request carries that reference AND
+ *   the SMS amount agrees with it within ±0.01 EGP — a reference hint is
+ *   customer-supplied, so a 1 EGP transfer must never confirm a 1000 EGP
+ *   deposit ([MatchResult.AmountMismatch], never confirmed). 2+ duplicates
+ *   are reported [MatchResult.Ambiguous] and never confirmed.
  * Priority 2 — amount fallback (only when enabled): provider matches AND
  *   |expected − parsed| ≤ 0.01 EGP. Confirms only when EXACTLY ONE candidate
  *   matches; zero candidates is a plain no-match, 2+ is [MatchResult.Ambiguous].
@@ -44,6 +47,9 @@ object VerifyMatcher {
     sealed interface MatchResult {
         data class Match(val verify: PendingVerify, val byReference: Boolean) : MatchResult
 
+        /** Reference matched exactly one deposit but the amount disagrees — never confirm. */
+        data class AmountMismatch(val verify: PendingVerify, val expected: Double, val received: Double) : MatchResult
+
         /** Multiple equally plausible deposits — ambiguous, never confirm. */
         data class Ambiguous(val reason: String, val candidates: Int) : MatchResult
 
@@ -63,7 +69,14 @@ object VerifyMatcher {
         if (ref.isNotEmpty()) {
             val byRef = live.filter { it.referenceIdHint?.let(::normalizedReference) == ref }
             return when (byRef.size) {
-                1 -> MatchResult.Match(byRef[0], byReference = true)
+                1 -> {
+                    val v = byRef[0]
+                    if (amountsAgree(v.expectedAmount, parsed.amount)) {
+                        MatchResult.Match(v, byReference = true)
+                    } else {
+                        MatchResult.AmountMismatch(v, v.expectedAmount, parsed.amount)
+                    }
+                }
                 0 -> if (allowAmountFallback) amountFallbackMatch(parsed, live) else MatchResult.NoMatch
                 else -> MatchResult.Ambiguous("duplicate_reference", byRef.size)
             }
@@ -74,7 +87,7 @@ object VerifyMatcher {
     private fun amountFallbackMatch(parsed: ParsedTransaction, live: List<PendingVerify>): MatchResult {
         val candidates = live.filter {
             sameProvider(it.provider, parsed.provider) &&
-                abs(it.expectedAmount - parsed.amount) <= AMOUNT_TOLERANCE_EGP
+                amountsAgree(it.expectedAmount, parsed.amount)
         }
         return when (candidates.size) {
             1 -> MatchResult.Match(candidates[0], byReference = false)
@@ -82,6 +95,10 @@ object VerifyMatcher {
             else -> MatchResult.Ambiguous("duplicate_amount", candidates.size)
         }
     }
+
+    /** Small epsilon absorbs binary floating-point error at the ±0.01 boundary. */
+    fun amountsAgree(expected: Double, received: Double): Boolean =
+        abs(expected - received) <= AMOUNT_TOLERANCE_EGP + 1e-9
 
     /**
      * Safe reference normalization: Arabic-Indic (٠-٩) and Extended

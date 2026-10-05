@@ -30,6 +30,7 @@ object HealthNotifier {
     const val ALERT_CHANNEL_ID = "gateway_alerts"
     const val ALERT_NOTIF_ID = 1002
     const val UPDATE_STOPPED_NOTIF_ID = 1003
+    const val START_FAILED_NOTIF_ID = 1004
 
     /** Continuous-failure duration before the first alert (spec default: 5 min). */
     const val FAILURE_ALERT_AFTER_MS = 5L * 60_000L
@@ -128,6 +129,33 @@ object HealthNotifier {
             .setContentIntent(openApp)
             .build()
         mgr.notify(UPDATE_STOPPED_NOTIF_ID, notification)
+    }
+
+    /**
+     * The service could not enter the foreground (OS refused the start).
+     * One tap reopens the app, whose foreground launch restarts it.
+     */
+    fun postStartFailedNotification(context: Context) {
+        val appContext = context.applicationContext
+        createChannel(appContext)
+        val mgr = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val openApp = PendingIntent.getActivity(
+            appContext, 2,
+            Intent(appContext, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification: Notification = NotificationCompat.Builder(appContext, ALERT_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setContentTitle(appContext.getString(R.string.start_failed_title))
+            .setContentText(appContext.getString(R.string.start_failed_text))
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText(appContext.getString(R.string.start_failed_text)))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(openApp)
+            .build()
+        mgr.notify(START_FAILED_NOTIF_ID, notification)
     }
 
     /** Clear the alert without touching failure tracking (e.g. service stop by user). */

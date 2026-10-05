@@ -13,6 +13,13 @@ interface CapturedSmsDao {
     @Query("UPDATE captured_sms SET matched = 1, verifyId = :verifyId WHERE id = :id")
     suspend fun markMatched(id: Long, verifyId: String)
 
+    @Query("SELECT * FROM captured_sms WHERE id = :id")
+    suspend fun getById(id: Long): CapturedSms?
+
+    /** Late-match candidates: SMS that confirmed nothing yet, newest window only. */
+    @Query("SELECT * FROM captured_sms WHERE matched = 0 AND timeMs >= :since ORDER BY timeMs ASC")
+    suspend fun unmatchedSince(since: Long): List<CapturedSms>
+
     @Query("SELECT * FROM captured_sms WHERE matched = 1 ORDER BY timeMs DESC LIMIT :limit")
     fun recentMatchedFlow(limit: Int = 5): Flow<List<CapturedSms>>
 

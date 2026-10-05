@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Queue
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
@@ -761,10 +762,14 @@ private fun EmptyLogPlaceholder() {
 private fun DispatchTransactionCard(log: DispatchLog, dateFmt: SimpleDateFormat) {
     val isFailed = log.status.contains("failed", ignoreCase = true)
     val isConfirmed = log.isConfirmed && !isFailed
+    // Over-cap, amount-mismatch and ambiguous SMS: nothing was sent, a
+    // person must look — never shown as a "Timeout".
+    val isReview = log.status == "review" || log.status == "ambiguous"
 
     val statusIcon = when {
         isFailed    -> Icons.Filled.Error
         isConfirmed -> Icons.Filled.CheckCircle
+        isReview    -> Icons.Filled.Warning
         else        -> Icons.Filled.AccessTime
     }
 
@@ -777,6 +782,7 @@ private fun DispatchTransactionCard(log: DispatchLog, dateFmt: SimpleDateFormat)
     val statusTextRes = when {
         isFailed    -> R.string.status_failed
         isConfirmed -> R.string.status_confirmed
+        isReview    -> R.string.status_review
         else        -> R.string.status_timeout
     }
 

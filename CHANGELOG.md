@@ -3,6 +3,98 @@
 All notable changes to PaySync Gateway are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] — 2026-10-05
+
+Correctness, security and reliability fixes from a full code review.
+**Upgrade note for backend owners:** the retry policy changed (see below) and
+a new, optional signature header exists — existing backends keep working
+without any change.
+
+### Fixed — payments
+
+- **A matched deposit could be confirmed twice, or get `timeout` after
+  `confirmed`.** The matched row was deleted right away, so the next poll
+  (before the backend had received the dispatch) re-inserted it as a fresh
+  PENDING deposit. Matched and timed-out deposits are now kept as tombstones
+  until their dispatch is delivered (plus 24 h).
+- **A reference match ignored the amount.** A customer could supply the
+  reference of a 1 EGP transfer for a 1000 EGP deposit. A reference now
+  confirms only when the amount also agrees (±0.01 EGP); otherwise the SMS is
+  logged for manual review.
+- **Confirmed payments were dropped after ~2 minutes of backend errors**
+  (6 failed tries, or any 401/403). Dispatches now stay queued until the
+  backend accepts them; only `400/404/409/410/422` are dead-lettered.
+- **SMS that arrived before the deposit reached the phone were never matched.**
+  Unmatched SMS are now re-checked against newly polled deposits — by amount
+  only within the poll lag (poll interval + 60 s), by exact reference up to
+  15 minutes back, so an old unmatched SMS is never credited to a different
+  customer's new deposit of the same amount.
+- **Outgoing transfers / debits were parsed as deposits** (e.g. "تم تحويل
+  مبلغ 150 جنيه إلى رقم …", "تم خصم …", "You have sent …"), which could
+  auto-confirm a pending deposit of the same amount. They are now ignored.
+- **Transaction references were corrupted** when a number followed them
+  ("Transaction ID: 023732288590 2024-10-05" → "0237322885902024"): spaces
+  are no longer stripped during digit normalization.
+- The generic bank parser no longer picks a balance ("رصيدك 5000 جنيه") as
+  the amount or the sender's mobile number as the reference.
+
+### Fixed — reliability
+
+- One malformed deposit in `GET /transactions/pending` no longer aborts the
+  whole poll; invalid items are skipped individually.
+- HTTP timeouts are real (`callTimeout`, cancellable calls) instead of a
+  coroutine timeout around a blocking call.
+- Drains are serialized and no longer cancel an in-flight POST.
+- A failure while processing an SMS releases its dedup claim instead of
+  marking the payment "seen" forever.
+- The SMS match, outbox insert and "matched" marks happen in one database
+  transaction; the expiry sweep runs under the match lock.
+- If the foreground service cannot start, the app stops cleanly, engages the
+  WorkManager fallback and notifies the user instead of running half-alive.
+
+### Changed — settings storage
+
+- **Settings are now encrypted by the app itself** (AES-256-GCM, key
+  generated in and never leaving the Android Keystore, each value bound to
+  its key name) instead of the deprecated AndroidX `security-crypto`
+  `EncryptedSharedPreferences`.
+- **One-time, crash-safe migration** on the first launch after the update:
+  old settings are copied, re-read and verified, and only then is the old
+  file deleted. Any failure rolls the copy back, keeps the old file, keeps
+  the app running on it, and retries on the next launch. Values saved while
+  a migration was pending are never overwritten by older ones.
+- `security-crypto` remains only as a read-only legacy reader for that
+  migration and will be removed in a later release.
+
+### Fixed — security & privacy
+
+- New `X-Gateway-Timestamp` + `X-Gateway-Signature-V2` headers sign every
+  request (GET and POST) without sending the secret. The raw
+  `X-Gateway-Secret` header can be switched off in Settings (default ON for
+  compatibility). See `BACKEND_API_CONTRACT.md`.
+- Settings can no longer be saved without a secret.
+- If the Keystore is broken, settings go to a separate unencrypted file (with
+  a warning in Settings) instead of reading the encrypted file as plain text.
+- Removed the unused `READ_SMS` permission.
+- Release builds without `keystore.properties` are now unsigned instead of
+  being signed with the public debug key.
+- PRIVACY.md no longer claims the raw SMS text is sent to the backend (it
+  never was).
+
+### Fixed — UI
+
+- Dashboard "Last poll" now reflects the service's own polls, not only the
+  manual "Poll now" button.
+- "Poll now" no longer reports success when it was offline or not configured.
+- Removing the last allowed sender no longer silently restores the defaults.
+- Out-of-range poll intervals are clamped and shown instead of being ignored.
+- Live Log entries that need a human (over the auto-confirm cap, reference
+  with the wrong amount, ambiguous) show "Needs review" instead of "Timeout".
+
+### Removed
+
+- Stray `backend_config.json` test fixture from the repository root.
+
 ## [1.1.1] — 2026-10-01
 
 Fix release for a reliability bug found during the v1.1.0 upgrade test.

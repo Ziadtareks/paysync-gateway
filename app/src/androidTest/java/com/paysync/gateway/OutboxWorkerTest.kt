@@ -3,6 +3,7 @@ package com.paysync.gateway
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.work.ListenableWorker
+import androidx.work.WorkManager
 import androidx.work.testing.TestListenableWorkerBuilder
 import com.paysync.gateway.data.DispatchPayload
 import com.paysync.gateway.work.DispatchWorker
@@ -20,9 +21,10 @@ import org.junit.runner.RunWith
 
 /**
  * Phase-6b: outbox behavior against a fake backend — 5xx then 200 (in-worker
- * retry with backoff and eventual delivery), 4xx (dead-lettered, never
- * retried), and outbox rows persisting with their once-minted Idempotency
- * Keys (what makes WorkManager delivery after process death safe).
+ * retry with backoff and eventual delivery), 404 (dead-lettered, never
+ * retried), 401 (kept and retried — never dropped), and outbox rows
+ * persisting with their once-minted Idempotency Keys (what makes
+ * WorkManager delivery after process death safe).
  */
 @RunWith(AndroidJUnit4::class)
 class OutboxWorkerTest {
@@ -33,6 +35,8 @@ class OutboxWorkerTest {
 
     @Before
     fun setUp() = runBlocking {
+        // No background drain from an earlier test may consume this test's responses.
+        WorkManager.getInstance(context).cancelAllWorkByTag("dispatch").result.get()
         server = MockWebServer()
         server.start()
         container.db.clearAllTables()
@@ -91,6 +95,33 @@ class OutboxWorkerTest {
         val failed = container.db.dispatchLogDao().recentFlow(50).first()
             .first { it.status.contains("failed") }
         assertTrue(failed.detail.isNotEmpty())
+    }
+
+    @Test
+    fun authFailure_isKeptAndRetried_neverDropped() = runBlocking {
+        DispatchWorker.backoffMs = longArrayOf(1L)
+        try {
+            repeat(DispatchWorker.MAX_ATTEMPTS_PER_RUN) { server.enqueue(MockResponse().setResponseCode(401)) }
+            container.repo.enqueueDispatch(
+                DispatchPayload(verifyId = "v-ob5", status = "confirmed", amount = 75.0)
+            )
+
+            val result = runWorker()
+            assertEquals(ListenableWorker.Result.retry(), result)
+            assertEquals(DispatchWorker.MAX_ATTEMPTS_PER_RUN, server.requestCount)
+
+            // A wrong secret must never lose a confirmed payment.
+            val row = container.db.dispatchQueueDao().dueOnce(20).single()
+            assertEquals("v-ob5", row.verifyId)
+            assertEquals(DispatchWorker.MAX_ATTEMPTS_PER_RUN, row.attempts)
+
+            // Once the backend accepts it, the same row (same key) is delivered.
+            server.enqueue(MockResponse().setBody("""{"status":"success"}"""))
+            assertEquals(ListenableWorker.Result.success(), runWorker())
+            assertEquals(0, container.db.dispatchQueueDao().countFlow().first())
+        } finally {
+            DispatchWorker.backoffMs = DispatchWorker.BACKOFF_MS
+        }
     }
 
     @Test
